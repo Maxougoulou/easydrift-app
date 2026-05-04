@@ -310,7 +310,7 @@ function ListRow({ project, team, onClick, onDelete }) {
 // ─── DÉTAIL PROJET ────────────────────────────────────────────────────────────
 
 function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
-  const { isMobile } = useAppContext();
+  const { isMobile, addNotification } = useAppContext();
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
   const [mobileTab, setMobileTab] = useState('tasks');
@@ -318,8 +318,21 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
   const comments = project.comments ?? [];
   const tasks = project.tasks ?? [];
 
-  const handleSendComment = async (text) => {
+  const handleSendComment = async (text, mentionIds = []) => {
+    if (!currentMember) return;
     await addComment(project.id, currentMember.id, text);
+    for (const memberId of mentionIds) {
+      if (memberId !== currentMember.id) {
+        await addNotification({
+          type: 'mention',
+          from: currentMember.id,
+          to: memberId,
+          text: `${currentMember.name} t'a mentionné dans « ${project.name} »`,
+          detail: text,
+          projectId: project.id,
+        });
+      }
+    }
   };
 
   const StatsAndTasks = () => (
@@ -394,7 +407,13 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         })}
       </div>
       <div style={{ padding: '10px 12px', borderTop: `1px solid ${THEME.border}`, flexShrink: 0 }}>
-        <MentionInput onSend={handleSendComment} placeholder="Message… @ pour notifier" team={team} currentMemberId={currentMember?.id} />
+        {currentMember ? (
+          <MentionInput onSend={handleSendComment} placeholder="Message… @ pour notifier" team={team} currentMemberId={currentMember.id} />
+        ) : (
+          <div style={{ fontSize: 11, color: THEME.accent.red, textAlign: 'center', padding: '10px 0', background: THEME.accent.redDim, borderRadius: 8 }}>
+            Compte non lié — mets à jour <code>auth_user_id</code> dans Supabase
+          </div>
+        )}
       </div>
     </div>
   );

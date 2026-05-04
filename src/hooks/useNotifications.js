@@ -10,6 +10,7 @@ export function useNotifications(userId) {
     const { data } = await supabase
       .from('notifications')
       .select('*, from_member:team_members!notifications_from_member_id_fkey(id, name, avatar, color)')
+      .eq('to_member_id', userId)
       .order('created_at', { ascending: false })
       .limit(50);
     if (data) setNotifications(data);
@@ -41,6 +42,7 @@ export function useNotifications(userId) {
   };
 
   const addNotification = async (notif) => {
+    const now = new Date();
     await supabase.from('notifications').insert({
       type: notif.type,
       from_member_id: notif.from,
@@ -49,6 +51,8 @@ export function useNotifications(userId) {
       detail: notif.detail ?? null,
       project_id: notif.projectId ?? null,
       read: false,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     });
   };
 

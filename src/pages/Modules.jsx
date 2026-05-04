@@ -245,7 +245,7 @@ export function MessagesModule() {
                         borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
                         padding: '10px 14px', fontSize: 13, color: isMe ? '#fff' : THEME.text.primary, lineHeight: 1.5,
                       }}><CommentText text={msg.text} team={team} /></div>
-                      <div style={{ fontSize: 10, color: THEME.text.muted, marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{msg.time}</div>
+                      <div style={{ fontSize: 10, color: THEME.text.muted, marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{msg.date} à {msg.time}</div>
                     </div>
                   </div>
                 );
