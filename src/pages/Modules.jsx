@@ -102,7 +102,7 @@ export function CalendarModule() {
 
 // ─── BUDGET ───────────────────────────────────────────────────────────────────
 export function BudgetModule() {
-  const { projects, budget, loading, addBudgetEntry } = useAppContext();
+  const { projects, budget, loading, addBudgetEntry, isMobile } = useAppContext();
   const [showAddBudget, setShowAddBudget] = useState(false);
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Budget" subtitle="Chargement…" /><Spinner /></div>;
 
@@ -113,7 +113,7 @@ export function BudgetModule() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar title="Budget" subtitle="Suivi financier des projets" actions={<Btn size="sm" onClick={() => setShowAddBudget(true)}>+ Dépense</Btn>} />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
           {[
             { label: 'Total dépensé (projets)', value: `${projects.reduce((s, p) => s + (p.budget?.spent ?? 0), 0).toLocaleString('fr-FR')} €`, color: THEME.accent.red },
             { label: 'Budget alloué (projets)', value: `${projects.reduce((s, p) => s + (p.budget?.allocated ?? 0), 0).toLocaleString('fr-FR')} €`, color: THEME.accent.orange },
@@ -125,7 +125,7 @@ export function BudgetModule() {
             </Card>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 16 }}>
           <Card style={{ padding: '16px 20px' }} hover={false}>
             <div style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, marginBottom: 16, fontFamily: 'Rajdhani' }}>Recettes vs Dépenses (mensuel)</div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 160 }}>

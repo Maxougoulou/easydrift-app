@@ -66,3 +66,43 @@ export function useVehicles() {
 
   return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, refetch: fetchVehicles };
 }
+
+export function useVehicleDocs(vehicleId) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchDocs = async () => {
+    if (!vehicleId) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from('vehicle_documents')
+        .select('*')
+        .eq('vehicle_id', vehicleId)
+        .order('created_at', { ascending: false });
+      setDocs(data ?? []);
+    } catch (_) {
+      setDocs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDocs(); }, [vehicleId]);
+
+  const addDoc = async (entry) => {
+    try {
+      await supabase.from('vehicle_documents').insert({ vehicle_id: vehicleId, ...entry });
+      await fetchDocs();
+    } catch (_) {}
+  };
+
+  const deleteDoc = async (id) => {
+    try {
+      await supabase.from('vehicle_documents').delete().eq('id', id);
+      await fetchDocs();
+    } catch (_) {}
+  };
+
+  return { docs, loading, addDoc, deleteDoc };
+}

@@ -1,12 +1,29 @@
 import { useEffect } from 'react';
 import { THEME } from '../lib/theme';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 export function Modal({ title, onClose, children, width = 520 }) {
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  if (isMobile) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: THEME.bg.card, zIndex: 3000, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0 }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.03em' }}>{title}</span>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: THEME.text.muted, fontSize: 22, lineHeight: 1, padding: '4px 8px', borderRadius: 6 }}>✕</button>
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -17,7 +34,6 @@ export function Modal({ title, onClose, children, width = 520 }) {
         onClick={e => e.stopPropagation()}
         style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, width: '100%', maxWidth: width, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
       >
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0 }}>
           <span style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.03em' }}>{title}</span>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: THEME.text.muted, fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 6 }}
@@ -25,7 +41,6 @@ export function Modal({ title, onClose, children, width = 520 }) {
             onMouseLeave={e => e.currentTarget.style.color = THEME.text.muted}
           >✕</button>
         </div>
-        {/* Body */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {children}
         </div>

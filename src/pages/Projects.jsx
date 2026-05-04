@@ -310,6 +310,7 @@ function ListRow({ project, team, onClick, onDelete }) {
 // ─── DÉTAIL PROJET ────────────────────────────────────────────────────────────
 
 function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
+  const { isMobile } = useAppContext();
   const [activeTab, setActiveTab] = useState('tasks');
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
@@ -346,7 +347,7 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Avancement', value: `${project.progress}%`, color: THEME.accent.orange },
             { label: 'Tâches restantes', value: (project.tasks ?? []).filter(t => t.status !== 'Terminé').length, color: THEME.accent.blue },

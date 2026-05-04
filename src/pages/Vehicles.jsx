@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, Btn, Card, Spinner } from '../components/ui';
-import { VehicleForm, MaintenanceForm, EventForm } from '../components/Forms';
+import { VehicleForm, MaintenanceForm, EventForm, DocumentForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
+import { useVehicleDocs } from '../hooks/useVehicles';
 
 export function VehiclesModule() {
   const { vehicles, loading, projects, createVehicle, createEvent } = useAppContext();
@@ -119,7 +120,7 @@ function VehicleCard({ vehicle, onClick }) {
 // ─── DÉTAIL VÉHICULE ──────────────────────────────────────────────────────────
 
 function VehicleDetail({ vehicle, onBack }) {
-  const { team, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, vehicles, projects, createEvent } = useAppContext();
+  const { team, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, vehicles, projects, createEvent, isMobile } = useAppContext();
   const [activeTab, setActiveTab] = useState('history');
   const [showEdit, setShowEdit] = useState(false);
   const [showAddMaintenance, setShowAddMaintenance] = useState(false);
@@ -176,7 +177,7 @@ function VehicleDetail({ vehicle, onBack }) {
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'CT Dernier', value: new Date(vehicle.lastCT?.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }), sub: vehicle.lastCT?.result, color: vehicle.lastCT?.result === 'Favorable' ? THEME.accent.green : THEME.accent.yellow },
             { label: 'Prochain CT', value: new Date(vehicle.nextCT).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }), sub: `dans ${Math.ceil((new Date(vehicle.nextCT) - new Date()) / 86400000)} jours`, color: THEME.accent.orange },
@@ -233,11 +234,7 @@ function VehicleDetail({ vehicle, onBack }) {
         })()}
 
         {activeTab === 'documents' && (
-          <div style={{ textAlign: 'center', padding: 60, color: THEME.text.muted }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
-            <div style={{ fontSize: 14, marginBottom: 8 }}>Aucun document</div>
-            <Btn size="sm">+ Ajouter un document</Btn>
-          </div>
+          <DocumentsTab vehicleId={vehicle.id} />
         )}
       </div>
 
@@ -249,6 +246,68 @@ function VehicleDetail({ vehicle, onBack }) {
       )}
       {showPlanEvent && (
         <EventForm vehicles={vehicles} projects={projects} onSubmit={createEvent} onClose={() => setShowPlanEvent(false)} />
+      )}
+    </div>
+  );
+}
+
+// ─── ONGLET DOCUMENTS ────────────────────────────────────────────────────────
+
+function DocumentsTab({ vehicleId }) {
+  const { docs, loading, addDoc, deleteDoc } = useVehicleDocs(vehicleId);
+  const [showAddDoc, setShowAddDoc] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const typeIcons = { document: '📄', facture: '🧾', contrat: '📋', assurance: '🛡', autre: '📎' };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: THEME.text.muted }}>Chargement…</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <Btn size="sm" onClick={() => setShowAddDoc(true)}>+ Ajouter un document</Btn>
+      </div>
+      {docs.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: THEME.text.muted }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
+          <div style={{ fontSize: 13 }}>Aucun document enregistré</div>
+        </div>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {docs.map(doc => (
+          <div
+            key={doc.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+              borderRadius: 10, background: THEME.bg.card,
+              border: `1px solid ${confirmDelete === doc.id ? THEME.accent.red + '55' : THEME.border}`,
+              transition: 'border-color 0.2s',
+            }}
+          >
+            <span style={{ fontSize: 22 }}>{typeIcons[doc.type] ?? '📎'}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
+              <div style={{ fontSize: 11, color: THEME.text.muted, textTransform: 'capitalize' }}>{doc.type}</div>
+            </div>
+            {doc.url && (
+              <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: THEME.accent.orange, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>Ouvrir →</a>
+            )}
+            {confirmDelete === doc.id ? (
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <button onClick={() => { deleteDoc(doc.id); setConfirmDelete(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(doc.id)} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4, flexShrink: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+                onMouseLeave={e => e.currentTarget.style.color = THEME.text.muted}
+              >×</button>
+            )}
+          </div>
+        ))}
+      </div>
+      {showAddDoc && (
+        <DocumentForm onSubmit={addDoc} onClose={() => setShowAddDoc(false)} />
       )}
     </div>
   );

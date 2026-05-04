@@ -4,7 +4,7 @@ import { Avatar, StatusBadge, ProgressBar, Card, Spinner } from '../components/u
 import { useAppContext } from '../lib/AppContext';
 
 export function DashboardModule() {
-  const { projects, vehicles, team, loading, onNavigate } = useAppContext();
+  const { projects, vehicles, team, loading, onNavigate, isMobile } = useAppContext();
 
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Dashboard" subtitle="Chargement…" /><Spinner /></div>;
 
@@ -35,7 +35,7 @@ export function DashboardModule() {
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
 
         {/* KPIs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
           {kpis.map(kpi => (
             <Card key={kpi.label} style={{ padding: '16px 18px' }} hover={false}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -47,7 +47,7 @@ export function DashboardModule() {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: 16, marginBottom: 16 }}>
           {/* Active projects */}
           <Card style={{ padding: 0, overflow: 'hidden' }} hover={false}>
             <div style={{ padding: '14px 18px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

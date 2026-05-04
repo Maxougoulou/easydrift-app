@@ -400,6 +400,46 @@ export function EventForm({ vehicles, projects, onSubmit, onClose }) {
   );
 }
 
+// ─── DOCUMENT VÉHICULE ────────────────────────────────────────────────────────
+export function DocumentForm({ onSubmit, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ name: '', url: '', type: 'document' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    await onSubmit({ name: form.name, url: form.url, type: form.type });
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <Modal title="Ajouter un document" onClose={onClose} width={420}>
+      <form onSubmit={handleSubmit}>
+        <div style={{ padding: '20px 24px' }}>
+          <FormField label="Nom du document" required>
+            <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Carte grise, Assurance…" required />
+          </FormField>
+          <FormField label="Lien (URL)">
+            <Input type="url" value={form.url} onChange={e => set('url', e.target.value)} placeholder="https://drive.google.com/…" />
+          </FormField>
+          <FormField label="Type">
+            <Select value={form.type} onChange={e => set('type', e.target.value)}>
+              <option value="document">Document</option>
+              <option value="facture">Facture</option>
+              <option value="contrat">Contrat</option>
+              <option value="assurance">Assurance</option>
+              <option value="autre">Autre</option>
+            </Select>
+          </FormField>
+        </div>
+        <FormActions onCancel={onClose} submitLabel="Ajouter le document" loading={loading} />
+      </form>
+    </Modal>
+  );
+}
+
 // ─── DÉPENSE BUDGET ───────────────────────────────────────────────────────────
 export function BudgetForm({ onSubmit, onClose }) {
   const [loading, setLoading] = useState(false);
