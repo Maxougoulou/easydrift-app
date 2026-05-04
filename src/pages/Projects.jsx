@@ -311,15 +311,93 @@ function ListRow({ project, team, onClick, onDelete }) {
 
 function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
   const { isMobile } = useAppContext();
-  const [activeTab, setActiveTab] = useState('tasks');
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
-  const tabs = ['tasks', 'comments', 'budget'];
-  const tabLabels = { tasks: 'Tâches', comments: 'Discussion', budget: 'Budget' };
+  const [mobileTab, setMobileTab] = useState('tasks');
+
+  const comments = project.comments ?? [];
+  const tasks = project.tasks ?? [];
 
   const handleSendComment = async (text) => {
     await addComment(project.id, currentMember.id, text);
   };
+
+  const StatsAndTasks = () => (
+    <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: 'Avancement', value: `${project.progress}%`, color: THEME.accent.orange },
+          { label: 'Tâches restantes', value: tasks.filter(t => t.status !== 'Terminé').length, color: THEME.accent.blue },
+          { label: 'Budget utilisé', value: project.budget?.allocated ? `${Math.round(project.budget.spent / project.budget.allocated * 100)}%` : '—', color: THEME.accent.green },
+          { label: 'Échéance', value: project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—', color: THEME.text.secondary },
+        ].map(stat => (
+          <Card key={stat.label} style={{ padding: 14 }}>
+            <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 6 }}>{stat.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, fontFamily: 'Rajdhani, sans-serif' }}>{stat.value}</div>
+          </Card>
+        ))}
+      </div>
+      <div style={{ marginBottom: 16 }}><ProgressBar value={project.progress} height={6} /></div>
+      <Card style={{ marginBottom: 20, padding: 14 }}>
+        <p style={{ margin: 0, fontSize: 13, color: THEME.text.secondary, lineHeight: 1.6 }}>{project.description || <em style={{ color: THEME.text.muted }}>Aucune description</em>}</p>
+        {(project.tags ?? []).length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {project.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, background: THEME.accent.orangeDim, color: THEME.accent.orange, fontWeight: 600 }}>{tag}</span>)}
+          </div>
+        )}
+      </Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani', letterSpacing: '0.03em' }}>Tâches</span>
+        <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {tasks.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
+        {tasks.map(task => (
+          <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
+        ))}
+      </div>
+    </div>
+  );
+
+  const DiscussionPanel = () => (
+    <div style={{ width: isMobile ? 'auto' : 320, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: isMobile ? 'none' : `1px solid ${THEME.border}`, flex: isMobile ? 1 : 'unset', minHeight: 0 }}>
+      <div style={{ padding: '14px 16px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>Discussion</span>
+        <span style={{ fontSize: 11, color: THEME.text.muted }}>{comments.length} message{comments.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {comments.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: THEME.text.muted, gap: 8, padding: '20px 0' }}>
+            <span style={{ fontSize: 28 }}>💬</span>
+            <span style={{ fontSize: 12 }}>Démarrez la discussion !</span>
+            <span style={{ fontSize: 11, color: THEME.text.muted, textAlign: 'center' }}>Utilisez @ pour notifier un membre</span>
+          </div>
+        )}
+        {comments.map(c => {
+          const member = c.team_members ?? team.find(m => m.id === (c.author_id ?? c.author));
+          const isMe = (c.author_id ?? c.author) === currentMember?.id;
+          return (
+            <div key={c.id} style={{ display: 'flex', gap: 8, flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
+              <Avatar member={member} size={26} />
+              <div style={{ maxWidth: '78%' }}>
+                {!isMe && <div style={{ fontSize: 10, fontWeight: 700, color: member?.color, marginBottom: 3 }}>{member?.name}</div>}
+                <div style={{
+                  background: isMe ? THEME.accent.orange : THEME.bg.card,
+                  border: `1px solid ${isMe ? 'transparent' : THEME.border}`,
+                  borderRadius: isMe ? '10px 3px 10px 10px' : '3px 10px 10px 10px',
+                  padding: '8px 12px', fontSize: 12, color: isMe ? '#fff' : THEME.text.primary, lineHeight: 1.5,
+                }}><CommentText text={c.text} team={team} /></div>
+                <div style={{ fontSize: 9, color: THEME.text.muted, marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{c.date} à {c.time}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding: '10px 12px', borderTop: `1px solid ${THEME.border}`, flexShrink: 0 }}>
+        <MentionInput onSend={handleSendComment} placeholder="Message… @ pour notifier" team={team} currentMemberId={currentMember?.id} />
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -332,109 +410,34 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         </>}
       />
 
-      {/* Fil d'Ariane cliquable */}
-      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: 'rgba(255,255,255,0.01)' }}>
-        <button
-          onClick={onBack}
-          style={{ background: 'none', border: 'none', color: THEME.accent.orange, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          ← Projets
-        </button>
-        <span style={{ color: THEME.text.muted, fontSize: 12 }}>/</span>
-        <span style={{ color: THEME.text.secondary, fontSize: 12, fontWeight: 600 }}>{project.name}</span>
+      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'rgba(255,255,255,0.01)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={onBack}
+            style={{ background: 'none', border: 'none', color: THEME.accent.orange, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0, fontFamily: 'inherit' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >← Projets</button>
+          <span style={{ color: THEME.text.muted, fontSize: 12 }}>/</span>
+          <span style={{ color: THEME.text.secondary, fontSize: 12, fontWeight: 600 }}>{project.name}</span>
+        </div>
+        {isMobile && (
+          <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
+            {[['tasks', 'Tâches'], ['discussion', 'Discussion']].map(([val, label]) => (
+              <button key={val} onClick={() => setMobileTab(val)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: mobileTab === val ? THEME.accent.orange : 'transparent', color: mobileTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-          {[
-            { label: 'Avancement', value: `${project.progress}%`, color: THEME.accent.orange },
-            { label: 'Tâches restantes', value: (project.tasks ?? []).filter(t => t.status !== 'Terminé').length, color: THEME.accent.blue },
-            { label: 'Budget utilisé', value: project.budget?.allocated ? `${Math.round(project.budget.spent / project.budget.allocated * 100)}%` : '—', color: THEME.accent.green },
-            { label: 'Échéance', value: project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—', color: THEME.text.secondary },
-          ].map(stat => (
-            <Card key={stat.label} style={{ padding: 14 }}>
-              <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 6 }}>{stat.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, fontFamily: 'Rajdhani, sans-serif' }}>{stat.value}</div>
-            </Card>
-          ))}
-        </div>
-        <div style={{ marginBottom: 16 }}><ProgressBar value={project.progress} height={6} /></div>
-        <Card style={{ marginBottom: 20, padding: 14 }}>
-          <p style={{ margin: 0, fontSize: 13, color: THEME.text.secondary, lineHeight: 1.6 }}>{project.description || <em style={{ color: THEME.text.muted }}>Aucune description</em>}</p>
-          {(project.tags ?? []).length > 0 && (
-            <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {project.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, background: THEME.accent.orangeDim, color: THEME.accent.orange, fontWeight: 600 }}>{tag}</span>)}
-            </div>
-          )}
-        </Card>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3 }}>
-            {tabs.map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', background: activeTab === tab ? THEME.accent.orange : 'transparent', color: activeTab === tab ? '#fff' : THEME.text.secondary, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{tabLabels[tab]}</button>
-            ))}
-          </div>
-          {activeTab === 'tasks' && (
-            <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>
-          )}
-        </div>
-
-        {activeTab === 'tasks' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {(project.tasks ?? []).length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
-            {(project.tasks ?? []).map(task => (
-              <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'comments' && (
-          <div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-              {(project.comments ?? []).length === 0 && <div style={{ textAlign: 'center', padding: '32px', color: THEME.text.muted, fontSize: 13 }}>Démarrez la discussion !</div>}
-              {(project.comments ?? []).map(c => {
-                const member = c.team_members ?? team.find(m => m.id === (c.author_id ?? c.author));
-                return (
-                  <div key={c.id} style={{ display: 'flex', gap: 12 }}>
-                    <Avatar member={member} size={32} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: member?.color ?? THEME.text.primary }}>{member?.name}</span>
-                        <span style={{ fontSize: 10, color: THEME.text.muted }}>{c.date} à {c.time}</span>
-                      </div>
-                      <div style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: '4px 12px 12px 12px', padding: '10px 14px', fontSize: 13, color: THEME.text.primary, lineHeight: 1.5 }}>
-                        <CommentText text={c.text} team={team} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <MentionInput onSend={handleSendComment} placeholder="Écrire un message… utilisez @ pour notifier" team={team} currentMemberId={currentMember?.id} />
-          </div>
-        )}
-
-        {activeTab === 'budget' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Card>
-              <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 12 }}>BUDGET ALLOUÉ</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>{(project.budget?.allocated ?? 0).toLocaleString('fr-FR')} €</div>
-            </Card>
-            <Card>
-              <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 12 }}>DÉPENSÉ</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: THEME.accent.orange, fontFamily: 'Rajdhani' }}>{(project.budget?.spent ?? 0).toLocaleString('fr-FR')} €</div>
-              {project.budget?.allocated > 0 && <div style={{ marginTop: 8 }}><ProgressBar value={Math.round(project.budget.spent / project.budget.allocated * 100)} /></div>}
-            </Card>
-            <Card style={{ gridColumn: '1 / -1' }}>
-              <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 8 }}>RESTANT</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: THEME.accent.green, fontFamily: 'Rajdhani' }}>{((project.budget?.allocated ?? 0) - (project.budget?.spent ?? 0)).toLocaleString('fr-FR')} €</div>
-              <div style={{ marginTop: 8 }}>
-                <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)}>Modifier le budget →</Btn>
-              </div>
-            </Card>
-          </div>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        {isMobile ? (
+          mobileTab === 'tasks' ? <StatsAndTasks /> : <DiscussionPanel />
+        ) : (
+          <>
+            <StatsAndTasks />
+            <DiscussionPanel />
+          </>
         )}
       </div>
 
