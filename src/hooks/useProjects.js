@@ -103,5 +103,17 @@ export function useProjects() {
     await fetchProjects();
   };
 
-  return { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, addComment, refetch: fetchProjects };
+  const deleteTask = async (taskId) => {
+    await supabase.from('tasks').delete().eq('id', taskId);
+    const project = projects.find(p => p.tasks?.some(t => t.id === taskId));
+    if (project) {
+      const remaining = project.tasks.filter(t => t.id !== taskId);
+      const done = remaining.filter(t => t.status === 'Terminé').length;
+      const progress = remaining.length > 0 ? Math.round(done / remaining.length * 100) : 0;
+      await supabase.from('projects').update({ progress }).eq('id', project.id);
+    }
+    await fetchProjects();
+  };
+
+  return { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment, refetch: fetchProjects };
 }

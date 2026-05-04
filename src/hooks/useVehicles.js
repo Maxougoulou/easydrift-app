@@ -59,5 +59,10 @@ export function useVehicles() {
     await fetchVehicles();
   };
 
-  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, refetch: fetchVehicles };
+  const deleteMaintenance = async (id) => {
+    await supabase.from('maintenance').delete().eq('id', id);
+    await fetchVehicles();
+  };
+
+  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, refetch: fetchVehicles };
 }

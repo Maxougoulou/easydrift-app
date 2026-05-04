@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { THEME, STATUS_CONFIG } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, PriorityBadge, ProgressBar, Card, Btn, Spinner } from '../components/ui';
@@ -7,7 +7,7 @@ import { ProjectForm, TaskForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
 
 export function ProjectsModule() {
-  const { projects, loading, createProject, updateProject, updateTaskStatus, addTask, addComment, team, currentMember } = useAppContext();
+  const { projects, loading, createProject, updateProject, updateTaskStatus, addTask, deleteTask, addComment, team, currentMember } = useAppContext();
   const [view, setView] = useState('kanban');
   const [selectedProject, setSelectedProject] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
@@ -24,6 +24,7 @@ export function ProjectsModule() {
         team={team}
         currentMember={currentMember}
         updateTaskStatus={updateTaskStatus}
+        deleteTask={deleteTask}
         addTask={addTask}
         addComment={addComment}
         updateProject={updateProject}
@@ -51,7 +52,13 @@ export function ProjectsModule() {
       />
       <div style={{ flex: 1, overflow: 'hidden', padding: '20px 24px' }}>
         {view === 'kanban'
-          ? <KanbanView projects={projects} team={team} onSelectProject={setSelectedProject} onAddProject={(status) => { setNewProjectStatus(status); setShowNewProject(true); }} />
+          ? <KanbanView
+              projects={projects}
+              team={team}
+              onSelectProject={setSelectedProject}
+              onAddProject={(status) => { setNewProjectStatus(status); setShowNewProject(true); }}
+              onMoveProject={(id, status) => updateProject(id, { status })}
+            />
           : <ListView projects={projects} team={team} onSelectProject={setSelectedProject} />
         }
       </div>
@@ -67,32 +74,74 @@ export function ProjectsModule() {
   );
 }
 
-function KanbanView({ projects, team, onSelectProject, onAddProject }) {
+// ─── KANBAN ───────────────────────────────────────────────────────────────────
+
+function KanbanView({ projects, team, onSelectProject, onAddProject, onMoveProject }) {
+  const [draggingId, setDraggingId] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
+
   const columns = ['À faire', 'En attente', 'En cours', 'Terminé'];
   const grouped = columns.reduce((acc, col) => {
-    acc[col] = projects.filter(p => col === 'À faire' ? !['En cours', 'En attente', 'Terminé'].includes(p.status) : p.status === col);
+    acc[col] = projects.filter(p =>
+      col === 'À faire'
+        ? !['En cours', 'En attente', 'Terminé'].includes(p.status)
+        : p.status === col
+    );
     return acc;
   }, {});
-  projects.forEach(p => {
-    if (!['En attente', 'En cours', 'Terminé'].includes(p.status) && !grouped['À faire'].find(x => x.id === p.id)) {
-      grouped['À faire'].push(p);
+
+  const handleDrop = (col) => {
+    if (draggingId !== null) {
+      const project = projects.find(p => p.id === draggingId);
+      if (project && project.status !== col) {
+        onMoveProject(draggingId, col);
+      }
     }
-  });
+    setDraggingId(null);
+    setDragOverCol(null);
+  };
 
   return (
     <div style={{ display: 'flex', gap: 16, height: '100%', overflow: 'auto', paddingBottom: 8 }}>
       {columns.map(col => {
         const items = grouped[col] ?? [];
         const cfg = STATUS_CONFIG[col] ?? STATUS_CONFIG['À faire'];
+        const isOver = dragOverCol === col && draggingId !== null;
         return (
-          <div key={col} style={{ minWidth: 280, maxWidth: 320, flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div
+            key={col}
+            style={{ minWidth: 280, maxWidth: 320, flex: '0 0 280px', display: 'flex', flexDirection: 'column', gap: 8 }}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverCol(col); }}
+            onDragLeave={(e) => { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) setDragOverCol(null); }}
+            onDrop={(e) => { e.preventDefault(); handleDrop(col); }}
+          >
+            {/* En-tête colonne */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.dot }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: THEME.text.secondary, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{col}</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: isOver ? THEME.accent.orange : cfg.dot, transition: 'background 0.15s' }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: isOver ? THEME.accent.orange : THEME.text.secondary, letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'color 0.15s' }}>{col}</span>
               <span style={{ marginLeft: 'auto', fontSize: 11, color: THEME.text.muted, background: 'rgba(255,255,255,0.06)', padding: '1px 7px', borderRadius: 10 }}>{items.length}</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto' }}>
-              {items.map(project => <KanbanCard key={project.id} project={project} team={team} onClick={() => onSelectProject(project)} />)}
+            {/* Zone de drop */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto',
+              borderRadius: 10,
+              border: `2px dashed ${isOver ? THEME.accent.orange + '55' : 'transparent'}`,
+              background: isOver ? 'rgba(240,120,20,0.04)' : 'transparent',
+              padding: isOver ? 6 : 0,
+              transition: 'all 0.15s',
+              minHeight: 60,
+            }}>
+              {items.map(project => (
+                <KanbanCard
+                  key={project.id}
+                  project={project}
+                  team={team}
+                  onClick={() => onSelectProject(project)}
+                  onDragStart={() => setDraggingId(project.id)}
+                  onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
+                  isDragging={draggingId === project.id}
+                />
+              ))}
               <button
                 onClick={() => onAddProject(col)}
                 style={{ border: `1px dashed ${THEME.border}`, background: 'transparent', borderRadius: 10, padding: '10px', color: THEME.text.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
@@ -107,22 +156,37 @@ function KanbanView({ projects, team, onSelectProject, onAddProject }) {
   );
 }
 
-function KanbanCard({ project, team, onClick }) {
+function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging }) {
   const [hov, setHov] = useState(false);
+  const justDragged = useRef(false);
   const doneTasks = (project.tasks ?? []).filter(t => t.status === 'Terminé').length;
   const totalTasks = (project.tasks ?? []).length;
   const daysLeft = project.due_date ? Math.ceil((new Date(project.due_date) - new Date()) / 86400000) : null;
 
   return (
     <div
-      onClick={onClick}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        justDragged.current = true;
+        onDragStart();
+      }}
+      onDragEnd={() => {
+        onDragEnd();
+        setTimeout(() => { justDragged.current = false; }, 50);
+      }}
+      onClick={() => { if (!justDragged.current) onClick(); }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: hov ? THEME.bg.cardHover : THEME.bg.card,
-        border: `1px solid ${hov ? 'rgba(240,120,20,0.25)' : THEME.border}`,
-        borderRadius: 10, padding: '14px', cursor: 'pointer', transition: 'all 0.15s ease',
+        background: hov && !isDragging ? THEME.bg.cardHover : THEME.bg.card,
+        border: `1px solid ${hov && !isDragging ? 'rgba(240,120,20,0.25)' : THEME.border}`,
+        borderRadius: 10, padding: '14px',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        transition: 'all 0.15s ease',
         borderLeft: `3px solid ${STATUS_CONFIG[project.status]?.dot ?? '#444'}`,
+        opacity: isDragging ? 0.35 : 1,
+        userSelect: 'none',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -148,6 +212,8 @@ function KanbanCard({ project, team, onClick }) {
     </div>
   );
 }
+
+// ─── LISTE ────────────────────────────────────────────────────────────────────
 
 function ListView({ projects, team, onSelectProject }) {
   return (
@@ -190,7 +256,9 @@ function ListRow({ project, team, onClick }) {
   );
 }
 
-function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, addTask, addComment, updateProject }) {
+// ─── DÉTAIL PROJET ────────────────────────────────────────────────────────────
+
+function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
   const [activeTab, setActiveTab] = useState('tasks');
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
@@ -208,10 +276,24 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         subtitle={project.category}
         actions={<>
           <StatusBadge status={project.status} />
-          <Btn size="sm" variant="secondary" onClick={onBack}>← Retour</Btn>
           <Btn size="sm" onClick={() => setShowEdit(true)}>Modifier</Btn>
         </>}
       />
+
+      {/* Fil d'Ariane cliquable */}
+      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, background: 'rgba(255,255,255,0.01)' }}>
+        <button
+          onClick={onBack}
+          style={{ background: 'none', border: 'none', color: THEME.accent.orange, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          ← Projets
+        </button>
+        <span style={{ color: THEME.text.muted, fontSize: 12 }}>/</span>
+        <span style={{ color: THEME.text.secondary, fontSize: 12, fontWeight: 600 }}>{project.name}</span>
+      </div>
+
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
@@ -250,7 +332,9 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         {activeTab === 'tasks' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(project.tasks ?? []).length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
-            {(project.tasks ?? []).map(task => <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} />)}
+            {(project.tasks ?? []).map(task => (
+              <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
+            ))}
           </div>
         )}
 
@@ -294,8 +378,8 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
             <Card style={{ gridColumn: '1 / -1' }}>
               <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 8 }}>RESTANT</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: THEME.accent.green, fontFamily: 'Rajdhani' }}>{((project.budget?.allocated ?? 0) - (project.budget?.spent ?? 0)).toLocaleString('fr-FR')} €</div>
-              <div style={{ marginTop: 8, fontSize: 11, color: THEME.text.muted }}>
-                <Btn size="sm" variant="secondary" onClick={() => updateProject(project.id, { budget_spent: (project.budget?.spent ?? 0) })}>Modifier le budget →</Btn>
+              <div style={{ marginTop: 8 }}>
+                <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)}>Modifier le budget →</Btn>
               </div>
             </Card>
           </div>
@@ -321,8 +405,12 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
   );
 }
 
-function TaskRow({ task, team, onToggle }) {
+// ─── LIGNE DE TÂCHE ───────────────────────────────────────────────────────────
+
+function TaskRow({ task, team, onToggle, onDelete }) {
   const [done, setDone] = useState(task.status === 'Terminé');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [hov, setHov] = useState(false);
   const assigneeMember = team.find(m => m.id === (task.assignee_id ?? task.assignee));
 
   const toggle = async () => {
@@ -332,11 +420,48 @@ function TaskRow({ task, team, onToggle }) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: THEME.bg.card, border: `1px solid ${THEME.border}`, opacity: done ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-      <button onClick={toggle} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: done ? THEME.accent.green : 'transparent', border: `2px solid ${done ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}>{done ? '✓' : ''}</button>
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8,
+        background: THEME.bg.card,
+        border: `1px solid ${confirmDelete ? THEME.accent.red + '55' : THEME.border}`,
+        opacity: done ? 0.6 : 1,
+        transition: 'all 0.2s',
+      }}
+    >
+      <button
+        onClick={toggle}
+        style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: done ? THEME.accent.green : 'transparent', border: `2px solid ${done ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
+      >{done ? '✓' : ''}</button>
+
       <span style={{ flex: 1, fontSize: 13, color: THEME.text.primary, textDecoration: done ? 'line-through' : 'none' }}>{task.title}</span>
+
       <PriorityBadge priority={task.priority} />
       {assigneeMember && <Avatar member={assigneeMember} size={24} />}
+
+      {/* Zone de suppression */}
+      {confirmDelete ? (
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Supprimer ?</span>
+          <button
+            onClick={() => onDelete(task.id)}
+            style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+          >Oui</button>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 9px', color: THEME.text.secondary, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >Non</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          style={{ background: 'transparent', border: 'none', color: hov ? THEME.text.muted : 'transparent', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4, flexShrink: 0, transition: 'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+          onMouseLeave={e => e.currentTarget.style.color = hov ? THEME.text.muted : 'transparent'}
+        >×</button>
+      )}
     </div>
   );
 }

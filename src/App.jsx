@@ -21,8 +21,8 @@ import { THEME } from './lib/theme';
 export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
   const { team, loading: teamLoading } = useTeam();
-  const { projects, loading: projectsLoading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, addComment } = useProjects();
-  const { vehicles, loading: vehiclesLoading, createVehicle, updateVehicle, deleteVehicle, addMaintenance } = useVehicles();
+  const { projects, loading: projectsLoading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment } = useProjects();
+  const { vehicles, loading: vehiclesLoading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance } = useVehicles();
   const { events, createEvent, deleteEvent } = useEvents();
   const { budget, addBudgetEntry, updateCategory } = useBudget();
   const [section, setSection] = useState('dashboard');
@@ -79,12 +79,14 @@ export default function App() {
     deleteProject,
     updateTaskStatus,
     addTask,
+    deleteTask,
     addComment,
     // Vehicles
     createVehicle,
     updateVehicle,
     deleteVehicle,
     addMaintenance,
+    deleteMaintenance,
     // Events
     createEvent,
     deleteEvent,
