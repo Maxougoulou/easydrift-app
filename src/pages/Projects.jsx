@@ -7,7 +7,7 @@ import { ProjectForm, TaskForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
 
 export function ProjectsModule() {
-  const { projects, loading, createProject, updateProject, updateTaskStatus, addTask, deleteTask, addComment, team, currentMember } = useAppContext();
+  const { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment, team, currentMember } = useAppContext();
   const [view, setView] = useState('kanban');
   const [selectedProject, setSelectedProject] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
@@ -58,8 +58,9 @@ export function ProjectsModule() {
               onSelectProject={setSelectedProject}
               onAddProject={(status) => { setNewProjectStatus(status); setShowNewProject(true); }}
               onMoveProject={(id, status) => updateProject(id, { status })}
+              onDeleteProject={deleteProject}
             />
-          : <ListView projects={projects} team={team} onSelectProject={setSelectedProject} />
+          : <ListView projects={projects} team={team} onSelectProject={setSelectedProject} onDeleteProject={deleteProject} />
         }
       </div>
 
@@ -76,7 +77,7 @@ export function ProjectsModule() {
 
 // ─── KANBAN ───────────────────────────────────────────────────────────────────
 
-function KanbanView({ projects, team, onSelectProject, onAddProject, onMoveProject }) {
+function KanbanView({ projects, team, onSelectProject, onAddProject, onMoveProject, onDeleteProject }) {
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
 
@@ -140,6 +141,7 @@ function KanbanView({ projects, team, onSelectProject, onAddProject, onMoveProje
                   onDragStart={() => setDraggingId(project.id)}
                   onDragEnd={() => { setDraggingId(null); setDragOverCol(null); }}
                   isDragging={draggingId === project.id}
+                  onDelete={onDeleteProject}
                 />
               ))}
               <button
@@ -156,8 +158,9 @@ function KanbanView({ projects, team, onSelectProject, onAddProject, onMoveProje
   );
 }
 
-function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging }) {
+function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging, onDelete }) {
   const [hov, setHov] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const justDragged = useRef(false);
   const doneTasks = (project.tasks ?? []).filter(t => t.status === 'Terminé').length;
   const totalTasks = (project.tasks ?? []).length;
@@ -175,10 +178,11 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
         onDragEnd();
         setTimeout(() => { justDragged.current = false; }, 50);
       }}
-      onClick={() => { if (!justDragged.current) onClick(); }}
+      onClick={() => { if (!justDragged.current && !confirmDelete) onClick(); }}
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
       style={{
+        position: 'relative',
         background: hov && !isDragging ? THEME.bg.cardHover : THEME.bg.card,
         border: `1px solid ${hov && !isDragging ? 'rgba(240,120,20,0.25)' : THEME.border}`,
         borderRadius: 10, padding: '14px',
@@ -189,6 +193,37 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
         userSelect: 'none',
       }}
     >
+      {/* Bouton × au survol */}
+      {hov && !confirmDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+          style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: 5, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.text.muted, fontSize: 14, cursor: 'pointer', zIndex: 1, transition: 'all 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = THEME.accent.red; e.currentTarget.style.color = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.5)'; e.currentTarget.style.color = THEME.text.muted; }}
+        >×</button>
+      )}
+
+      {/* Overlay de confirmation */}
+      {confirmDelete && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ position: 'absolute', inset: 0, borderRadius: 10, background: 'rgba(0,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 2, backdropFilter: 'blur(2px)' }}
+        >
+          <span style={{ fontSize: 13, color: '#fff', fontWeight: 700, textAlign: 'center', padding: '0 12px' }}>Supprimer « {project.name} » ?</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'center', padding: '0 16px', lineHeight: 1.4 }}>Toutes les tâches et commentaires seront supprimés.</span>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}
+              style={{ background: THEME.accent.red, border: 'none', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            >Supprimer</button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+              style={{ background: 'rgba(255,255,255,0.1)', border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            >Annuler</button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: THEME.text.muted, background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: 4, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{project.category}</span>
         <PriorityBadge priority={project.priority} />
@@ -215,26 +250,27 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
 
 // ─── LISTE ────────────────────────────────────────────────────────────────────
 
-function ListView({ projects, team, onSelectProject }) {
+function ListView({ projects, team, onSelectProject, onDeleteProject }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 140px 80px', padding: '8px 16px', marginBottom: 4, fontSize: 10, color: THEME.text.muted, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
-        <span>Projet</span><span>Statut</span><span>Priorité</span><span>Avancement</span><span>Responsable</span><span>Échéance</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 140px 80px 32px', padding: '8px 16px', marginBottom: 4, fontSize: 10, color: THEME.text.muted, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+        <span>Projet</span><span>Statut</span><span>Priorité</span><span>Avancement</span><span>Responsable</span><span>Échéance</span><span />
       </div>
-      {projects.map(project => <ListRow key={project.id} project={project} team={team} onClick={() => onSelectProject(project)} />)}
+      {projects.map(project => <ListRow key={project.id} project={project} team={team} onClick={() => onSelectProject(project)} onDelete={onDeleteProject} />)}
     </div>
   );
 }
 
-function ListRow({ project, team, onClick }) {
+function ListRow({ project, team, onClick, onDelete }) {
   const [hov, setHov] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const daysLeft = project.due_date ? Math.ceil((new Date(project.due_date) - new Date()) / 86400000) : null;
   return (
     <div
-      onClick={onClick}
+      onClick={() => { if (!confirmDelete) onClick(); }}
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 140px 80px', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', background: hov ? THEME.bg.cardHover : 'transparent', border: `1px solid ${hov ? 'rgba(240,120,20,0.15)' : 'transparent'}`, alignItems: 'center', transition: 'all 0.15s', marginBottom: 2 }}
+      onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
+      style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 140px 80px 32px', padding: '12px 16px', borderRadius: 8, cursor: 'pointer', background: hov ? THEME.bg.cardHover : 'transparent', border: `1px solid ${confirmDelete ? THEME.accent.red + '44' : hov ? 'rgba(240,120,20,0.15)' : 'transparent'}`, alignItems: 'center', transition: 'all 0.15s', marginBottom: 2 }}
     >
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary }}>{project.name}</div>
@@ -252,6 +288,21 @@ function ListRow({ project, team, onClick }) {
       <span style={{ fontSize: 11, fontWeight: 600, color: daysLeft === null ? THEME.text.muted : daysLeft < 0 ? THEME.accent.red : daysLeft < 7 ? THEME.accent.yellow : THEME.text.muted }}>
         {project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) : '—'}
       </span>
+      {/* Suppression */}
+      {confirmDelete ? (
+        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 4, gridColumn: '1 / -1', paddingTop: 8, borderTop: `1px solid ${THEME.accent.red}33`, marginTop: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700, flex: 1 }}>Supprimer « {project.name} » ?</span>
+          <button onClick={() => onDelete(project.id)} style={{ background: THEME.accent.red, border: 'none', borderRadius: 6, padding: '4px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: 6, padding: '4px 12px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+        </div>
+      ) : (
+        <button
+          onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+          style={{ background: 'transparent', border: 'none', color: hov ? THEME.text.muted : 'transparent', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4, transition: 'color 0.15s', justifySelf: 'center' }}
+          onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+          onMouseLeave={e => e.currentTarget.style.color = hov ? THEME.text.muted : 'transparent'}
+        >×</button>
+      )}
     </div>
   );
 }
