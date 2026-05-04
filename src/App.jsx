@@ -25,10 +25,12 @@ function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
   return (
     <>
       <div style={{
-        height: 56, background: THEME.bg.sidebar,
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000,
+        background: THEME.bg.sidebar,
         borderTop: `1px solid ${THEME.border}`,
         display: 'flex', alignItems: 'stretch',
-        flexShrink: 0,
+        height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {NAV_ITEMS.map(item => {
           const isActive = activeSection === item.id;
@@ -133,7 +135,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={{ height: '100vh', width: '100vw', background: THEME.bg.app, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ height: '100%', width: '100vw', background: THEME.bg.app, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Spinner />
       </div>
     );
@@ -197,9 +199,8 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        height: '100vh', width: '100vw',
+        display: 'flex', flexDirection: 'row',
+        height: '100%', width: '100vw',
         overflow: 'hidden', background: THEME.bg.app,
       }}>
         {!isMobile && (
@@ -212,7 +213,11 @@ export default function App() {
             onSignOut={signOut}
           />
         )}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, minHeight: 0 }}>
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', minWidth: 0, minHeight: 0,
+          paddingBottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom, 0px))' : 0,
+        }}>
           {renderSection()}
         </div>
         {isMobile && (
