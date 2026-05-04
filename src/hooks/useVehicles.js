@@ -26,20 +26,38 @@ export function useVehicles() {
 
   useEffect(() => {
     fetchVehicles();
-
     const channel = supabase
       .channel('vehicles-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, fetchVehicles)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, fetchVehicles)
       .subscribe();
-
     return () => supabase.removeChannel(channel);
   }, []);
 
-  const addMaintenance = async (vehicleId, entry) => {
-    await supabase.from('maintenance').insert({ vehicle_id: vehicleId, ...entry });
+  const createVehicle = async (data) => {
+    await supabase.from('vehicles').insert(data);
     await fetchVehicles();
   };
 
-  return { vehicles, loading, addMaintenance, refetch: fetchVehicles };
+  const updateVehicle = async (id, data) => {
+    await supabase.from('vehicles').update(data).eq('id', id);
+    await fetchVehicles();
+  };
+
+  const deleteVehicle = async (id) => {
+    await supabase.from('vehicles').delete().eq('id', id);
+    await fetchVehicles();
+  };
+
+  const addMaintenance = async (vehicleId, entry) => {
+    await supabase.from('maintenance').insert({ vehicle_id: vehicleId, ...entry });
+    // Mettre à jour le kilométrage du véhicule si plus élevé
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle && entry.km > vehicle.mileage) {
+      await supabase.from('vehicles').update({ mileage: entry.km }).eq('id', vehicleId);
+    }
+    await fetchVehicles();
+  };
+
+  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, refetch: fetchVehicles };
 }

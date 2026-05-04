@@ -3,13 +3,15 @@ import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, ProgressBar, Card, Btn, Spinner } from '../components/ui';
 import { MentionInput, CommentText } from '../components/Notifications';
+import { EventForm, BudgetForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
 import { useMessages } from '../hooks/useMessages';
 
 // ─── CALENDRIER ───────────────────────────────────────────────────────────────
 export function CalendarModule() {
-  const { events, loading } = useAppContext();
+  const { events, loading, createEvent, vehicles, projects } = useAppContext();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showAddEvent, setShowAddEvent] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -45,6 +47,7 @@ export function CalendarModule() {
             <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} style={{ background: 'transparent', border: `1px solid ${THEME.border}`, color: THEME.text.secondary, borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 14 }}>‹</button>
             <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, minWidth: 120, textAlign: 'center', fontFamily: 'Rajdhani', letterSpacing: '0.04em', textTransform: 'capitalize' }}>{monthName}</span>
             <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} style={{ background: 'transparent', border: `1px solid ${THEME.border}`, color: THEME.text.secondary, borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 14 }}>›</button>
+            <Btn size="sm" onClick={() => setShowAddEvent(true)}>+ Événement</Btn>
           </div>
         }
       />
@@ -85,13 +88,22 @@ export function CalendarModule() {
           ))}
         </div>
       </div>
+      {showAddEvent && (
+        <EventForm
+          vehicles={vehicles}
+          projects={projects}
+          onSubmit={createEvent}
+          onClose={() => setShowAddEvent(false)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── BUDGET ───────────────────────────────────────────────────────────────────
 export function BudgetModule() {
-  const { projects, budget, loading } = useAppContext();
+  const { projects, budget, loading, addBudgetEntry } = useAppContext();
+  const [showAddBudget, setShowAddBudget] = useState(false);
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Budget" subtitle="Chargement…" /><Spinner /></div>;
 
   const totalSpent = (budget?.categories ?? []).reduce((s, c) => s + c.amount, 0);
@@ -99,7 +111,7 @@ export function BudgetModule() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="Budget" subtitle="Suivi financier des projets" actions={<Btn size="sm">+ Dépense</Btn>} />
+      <TopBar title="Budget" subtitle="Suivi financier des projets" actions={<Btn size="sm" onClick={() => setShowAddBudget(true)}>+ Dépense</Btn>} />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
           {[
@@ -160,6 +172,9 @@ export function BudgetModule() {
           ))}
         </Card>
       </div>
+      {showAddBudget && (
+        <BudgetForm onSubmit={addBudgetEntry} onClose={() => setShowAddBudget(false)} />
+      )}
     </div>
   );
 }

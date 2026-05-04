@@ -4,6 +4,8 @@ import { useAuth } from './hooks/useAuth';
 import { useTeam } from './hooks/useTeam';
 import { useProjects } from './hooks/useProjects';
 import { useVehicles } from './hooks/useVehicles';
+import { useEvents } from './hooks/useEvents';
+import { useBudget } from './hooks/useBudget';
 import { useNotifications } from './hooks/useNotifications';
 import { supabase } from './lib/supabase';
 import { Sidebar } from './components/Sidebar';
@@ -19,10 +21,10 @@ import { THEME } from './lib/theme';
 export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
   const { team, loading: teamLoading } = useTeam();
-  const { projects, loading: projectsLoading, updateTaskStatus, addComment } = useProjects();
-  const { vehicles, loading: vehiclesLoading } = useVehicles();
-  const [events, setEvents] = useState([]);
-  const [budget, setBudget] = useState(null);
+  const { projects, loading: projectsLoading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, addComment } = useProjects();
+  const { vehicles, loading: vehiclesLoading, createVehicle, updateVehicle, deleteVehicle, addMaintenance } = useVehicles();
+  const { events, createEvent, deleteEvent } = useEvents();
+  const { budget, addBudgetEntry, updateCategory } = useBudget();
   const [section, setSection] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentMember, setCurrentMember] = useState(null);
@@ -33,15 +35,6 @@ export default function App() {
         .then(({ data }) => { if (data) setCurrentMember(data); });
     }
   }, [user, team]);
-
-  useEffect(() => {
-    supabase.from('events').select('*').order('date').then(({ data }) => { if (data) setEvents(data); });
-    supabase.from('budget_monthly').select('*').order('id').then(({ data: monthly }) => {
-      supabase.from('budget_categories').select('*').then(({ data: cats }) => {
-        setBudget({ monthly: monthly ?? [], categories: cats ?? [] });
-      });
-    });
-  }, []);
 
   const { notifications, toasts, unreadCount, markAllRead, markRead, addNotification, showToast } = useNotifications(currentMember?.id);
 
@@ -80,8 +73,25 @@ export default function App() {
     loading: dataLoading,
     onNavigate: setSection,
     onToggleSidebar: () => setSidebarCollapsed(c => !c),
+    // Projects
+    createProject,
+    updateProject,
+    deleteProject,
     updateTaskStatus,
+    addTask,
     addComment,
+    // Vehicles
+    createVehicle,
+    updateVehicle,
+    deleteVehicle,
+    addMaintenance,
+    // Events
+    createEvent,
+    deleteEvent,
+    // Budget
+    addBudgetEntry,
+    updateCategory,
+    // Notifications
     notifications,
     unreadCount,
     onMarkAllRead: markAllRead,

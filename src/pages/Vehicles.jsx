@@ -1,34 +1,47 @@
 import { useState } from 'react';
-import { THEME, STATUS_CONFIG } from '../lib/theme';
+import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, Btn, Card, Spinner } from '../components/ui';
+import { VehicleForm, MaintenanceForm, EventForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
 
 export function VehiclesModule() {
-  const { vehicles, loading, team } = useAppContext();
+  const { vehicles, loading, projects, createVehicle, createEvent } = useAppContext();
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [showPlanEvent, setShowPlanEvent] = useState(false);
 
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Véhicules" subtitle="Chargement…" /><Spinner /></div>;
 
   if (selectedVehicle) {
     const fresh = vehicles.find(v => v.id === selectedVehicle.id) ?? selectedVehicle;
-    return <VehicleDetail vehicle={fresh} team={team} onBack={() => setSelectedVehicle(null)} />;
+    return <VehicleDetail vehicle={fresh} onBack={() => setSelectedVehicle(null)} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar title="Véhicules" subtitle={`${vehicles.length} véhicules dans la flotte`} actions={<Btn size="sm">+ Ajouter un véhicule</Btn>} />
+      <TopBar
+        title="Véhicules"
+        subtitle={`${vehicles.length} véhicules dans la flotte`}
+        actions={<Btn size="sm" onClick={() => setShowAddVehicle(true)}>+ Ajouter un véhicule</Btn>}
+      />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-        <AlertsBar vehicles={vehicles} />
+        <AlertsBar vehicles={vehicles} onPlanify={() => setShowPlanEvent(true)} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginTop: 20 }}>
           {vehicles.map(v => <VehicleCard key={v.id} vehicle={v} onClick={() => setSelectedVehicle(v)} />)}
         </div>
       </div>
+      {showAddVehicle && (
+        <VehicleForm onSubmit={createVehicle} onClose={() => setShowAddVehicle(false)} />
+      )}
+      {showPlanEvent && (
+        <EventForm vehicles={vehicles} projects={projects} onSubmit={createEvent} onClose={() => setShowPlanEvent(false)} />
+      )}
     </div>
   );
 }
 
-function AlertsBar({ vehicles }) {
+function AlertsBar({ vehicles, onPlanify }) {
   const today = new Date();
   const alerts = [];
   vehicles.forEach(v => {
@@ -58,7 +71,7 @@ function AlertsBar({ vehicles }) {
               {a.type} dans <strong style={{ color: a.severity === 'high' ? THEME.accent.red : THEME.accent.yellow }}>{a.days} jours</strong>
             </span>
           </div>
-          <Btn size="sm" variant="secondary" style={{ marginLeft: 'auto' }}>Planifier</Btn>
+          <Btn size="sm" variant="secondary" style={{ marginLeft: 'auto' }} onClick={onPlanify}>Planifier</Btn>
         </div>
       ))}
     </div>
@@ -120,8 +133,12 @@ function VehicleCard({ vehicle, onClick }) {
   );
 }
 
-function VehicleDetail({ vehicle, team, onBack }) {
+function VehicleDetail({ vehicle, onBack }) {
+  const { team, updateVehicle, addMaintenance, vehicles, projects, createEvent } = useAppContext();
   const [activeTab, setActiveTab] = useState('history');
+  const [showEdit, setShowEdit] = useState(false);
+  const [showAddMaintenance, setShowAddMaintenance] = useState(false);
+  const [showPlanEvent, setShowPlanEvent] = useState(false);
   const tabs = ['history', 'parts', 'documents'];
   const tabLabels = { history: 'Historique', parts: 'Pièces installées', documents: 'Documents' };
   const totalCost = (vehicle.maintenance ?? []).reduce((s, m) => s + m.cost, 0);
@@ -133,8 +150,9 @@ function VehicleDetail({ vehicle, team, onBack }) {
         subtitle={`${vehicle.plate} • ${vehicle.year} • ${vehicle.mileage.toLocaleString('fr-FR')} km`}
         actions={<>
           <StatusBadge status={vehicle.status} />
+          <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)}>✏ Modifier</Btn>
           <Btn size="sm" variant="secondary" onClick={onBack}>← Retour</Btn>
-          <Btn size="sm">+ Intervention</Btn>
+          <Btn size="sm" onClick={() => setShowAddMaintenance(true)}>+ Intervention</Btn>
         </>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
@@ -162,6 +180,13 @@ function VehicleDetail({ vehicle, team, onBack }) {
             {(vehicle.maintenance ?? []).map((entry, idx) => (
               <MaintenanceRow key={entry.id} entry={entry} team={team} isLast={idx === vehicle.maintenance.length - 1} />
             ))}
+            {(vehicle.maintenance ?? []).length === 0 && (
+              <div style={{ textAlign: 'center', padding: 40, color: THEME.text.muted }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🔧</div>
+                <div style={{ marginBottom: 12 }}>Aucune intervention enregistrée</div>
+                <Btn size="sm" onClick={() => setShowAddMaintenance(true)}>+ Ajouter une intervention</Btn>
+              </div>
+            )}
           </div>
         )}
         {activeTab === 'parts' && (() => {
@@ -186,6 +211,28 @@ function VehicleDetail({ vehicle, team, onBack }) {
           </div>
         )}
       </div>
+      {showEdit && (
+        <VehicleForm
+          vehicle={vehicle}
+          onSubmit={(data) => updateVehicle(vehicle.id, data)}
+          onClose={() => setShowEdit(false)}
+        />
+      )}
+      {showAddMaintenance && (
+        <MaintenanceForm
+          team={team}
+          onSubmit={(data) => addMaintenance(vehicle.id, data)}
+          onClose={() => setShowAddMaintenance(false)}
+        />
+      )}
+      {showPlanEvent && (
+        <EventForm
+          vehicles={vehicles}
+          projects={projects}
+          onSubmit={createEvent}
+          onClose={() => setShowPlanEvent(false)}
+        />
+      )}
     </div>
   );
 }

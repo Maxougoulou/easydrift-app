@@ -11,7 +11,7 @@ export function useProjects() {
       .select(`
         *,
         tasks(*),
-        comments(*, team_members(id, name, avatar, color)),
+        comments(*, team_members!comments_author_id_fkey(id, name, avatar, color)),
         project_assignees(team_member_id)
       `)
       .order('created_at', { ascending: false });
@@ -30,19 +30,65 @@ export function useProjects() {
 
   useEffect(() => {
     fetchProjects();
-
     const channel = supabase
       .channel('projects-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchProjects)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchProjects)
       .subscribe();
-
     return () => supabase.removeChannel(channel);
   }, []);
+
+  const createProject = async (data) => {
+    const { assignees, ...projectData } = data;
+    const { data: project } = await supabase
+      .from('projects')
+      .insert(projectData)
+      .select()
+      .single();
+    if (project && assignees?.length) {
+      await supabase.from('project_assignees').insert(
+        assignees.map(id => ({ project_id: project.id, team_member_id: id }))
+      );
+    }
+    await fetchProjects();
+  };
+
+  const updateProject = async (id, data) => {
+    const { assignees, ...projectData } = data;
+    await supabase.from('projects').update(projectData).eq('id', id);
+    if (assignees !== undefined) {
+      await supabase.from('project_assignees').delete().eq('project_id', id);
+      if (assignees.length) {
+        await supabase.from('project_assignees').insert(
+          assignees.map(uid => ({ project_id: id, team_member_id: uid }))
+        );
+      }
+    }
+    await fetchProjects();
+  };
+
+  const deleteProject = async (id) => {
+    await supabase.from('projects').delete().eq('id', id);
+    await fetchProjects();
+  };
 
   const updateTaskStatus = async (taskId, done) => {
     const newStatus = done ? 'Terminé' : 'À faire';
     await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId);
+    // Recalculer le progrès du projet
+    const project = projects.find(p => p.tasks?.some(t => t.id === taskId));
+    if (project) {
+      const updatedTasks = project.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+      const progress = Math.round(updatedTasks.filter(t => t.status === 'Terminé').length / updatedTasks.length * 100);
+      await supabase.from('projects').update({ progress }).eq('id', project.id);
+    }
+    await fetchProjects();
+  };
+
+  const addTask = async (projectId, taskData) => {
+    await supabase.from('tasks').insert({ project_id: projectId, ...taskData });
+    await fetchProjects();
   };
 
   const addComment = async (projectId, authorId, text) => {
@@ -57,5 +103,5 @@ export function useProjects() {
     await fetchProjects();
   };
 
-  return { projects, loading, updateTaskStatus, addComment, refetch: fetchProjects };
+  return { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, addComment, refetch: fetchProjects };
 }
