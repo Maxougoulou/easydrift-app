@@ -26,7 +26,7 @@ const STATUS_CFG = {
 
 const fmt  = (n) => `${Number(n ?? 0).toLocaleString('fr-FR')} €`;
 const num  = (n) => Number(n ?? 0);
-const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_repas) + num(p.montant_hotel) + num(p.montant_loc) + num(p.montant_transport);
+const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_repas) + num(p.montant_hotel) + num(p.montant_essence) + num(p.montant_loc) + num(p.montant_transport);
 const tdRevenuePaid     = (td) => (td.track_day_participants ?? []).filter(p => p.paid).reduce((s, p) => s + pTotal(p), 0);
 const tdRevenueExpected = (td) => (td.track_day_participants ?? []).reduce((s, p) => s + pTotal(p), 0);
 const tdCosts           = (td) => COST_ITEMS.reduce((s, c) => s + num(td[c.key]), 0);
@@ -297,7 +297,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
 
 // ─── TABLEAU PARTICIPANTS ─────────────────────────────────────────────────────
 
-const COLS = '150px 110px 130px 48px 42px 42px 42px 88px 48px 88px 95px 95px 78px 44px 32px';
+const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 78px 44px 32px';
 
 function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant }) {
   const paidCount = parts.filter(p => p.paid).length;
@@ -328,6 +328,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'center' }}>Pil</span>
               <span style={{ textAlign: 'center' }}>Rep</span>
               <span style={{ textAlign: 'center' }}>Hôt</span>
+              <span style={{ textAlign: 'center' }}>Ess</span>
               <span style={{ textAlign: 'right' }}>DDP</span>
               <span style={{ textAlign: 'center' }}>Ann</span>
               <span style={{ textAlign: 'right' }}>LOC</span>
@@ -363,6 +364,10 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'center' }}>
                 <div>{parts.reduce((s, p) => s + num(p.hotel), 0)}</div>
                 {parts.some(p => num(p.montant_hotel) > 0) && <div style={{ fontSize: 9, color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_hotel), 0))}</div>}
+              </span>
+              <span style={{ textAlign: 'center' }}>
+                <div>{parts.reduce((s, p) => s + num(p.essence), 0)}</div>
+                {parts.some(p => num(p.montant_essence) > 0) && <div style={{ fontSize: 9, color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_essence), 0))}</div>}
               </span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_ddp), 0))}</span>
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.anneaux), 0)}</span>
@@ -409,6 +414,7 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete }) {
       <Cell center muted>{num(p.pilotes) || '—'}</Cell>
       <Cell center muted>{num(p.repas) || '—'}</Cell>
       <Cell center muted>{num(p.hotel) || '—'}</Cell>
+      <Cell center muted>{num(p.essence) || '—'}</Cell>
       <Cell right active={num(p.montant_ddp) > 0}>{num(p.montant_ddp) > 0 ? fmt(p.montant_ddp) : '—'}</Cell>
       <Cell center active={num(p.anneaux) > 0} color={THEME.accent.purple}>{num(p.anneaux) || '—'}</Cell>
       <Cell right active={num(p.montant_loc) > 0}>{num(p.montant_loc) > 0 ? fmt(p.montant_loc) : '—'}</Cell>
@@ -458,6 +464,7 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
   const anneauxRev   = parts.reduce((s, p) => s + num(p.montant_anneaux), 0);
   const repasRev     = parts.reduce((s, p) => s + num(p.montant_repas), 0);
   const hotelRev     = parts.reduce((s, p) => s + num(p.montant_hotel), 0);
+  const essenceRev   = parts.reduce((s, p) => s + num(p.montant_essence), 0);
   const locRev       = parts.reduce((s, p) => s + num(p.montant_loc), 0);
   const transportRev = parts.reduce((s, p) => s + num(p.montant_transport), 0);
 
@@ -495,6 +502,7 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
             { label: 'Anneaux',         value: anneauxRev },
             { label: 'Déjeuners',       value: repasRev },
             { label: 'Hôtel',           value: hotelRev },
+            { label: 'Essence',         value: essenceRev },
             { label: 'Location',        value: locRev },
             { label: 'Transport',       value: transportRev },
           ].map(r => (
@@ -563,6 +571,7 @@ function TrackDayForm({ td, onSubmit, onClose }) {
     status: td?.status ?? 'À venir', max_participants: td?.max_participants ?? 20,
     prix_vehicule: td?.prix_vehicule ?? 750, prix_anneau: td?.prix_anneau ?? 750,
     prix_dejeuner: td?.prix_dejeuner ?? 0, prix_hotel: td?.prix_hotel ?? 0,
+    prix_essence: td?.prix_essence ?? 0,
     prix_loc: td?.prix_loc ?? 0, prix_transport: td?.prix_transport ?? 0,
     cost_droits_piste: td?.cost_droits_piste ?? 0, cost_repas: td?.cost_repas ?? 0,
     cost_hotel: td?.cost_hotel ?? 0, cost_essence: td?.cost_essence ?? 0,
@@ -627,6 +636,10 @@ function TrackDayForm({ td, onSubmit, onClose }) {
             <input type="number" min="0" value={form.prix_hotel} onChange={e => set('prix_hotel', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
           <div>
+            <label style={lbl}>Prix bidon essence 20L (€)</label>
+            <input type="number" min="0" value={form.prix_essence} onChange={e => set('prix_essence', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
+          <div>
             <label style={lbl}>Prix LOC véhicule — défaut (€)</label>
             <input type="number" min="0" value={form.prix_loc} onChange={e => set('prix_loc', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
@@ -681,7 +694,7 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
     vehicules: 1, pilotes: 0, repas: 0, hotel: 0,
     montant_ddp: num(td?.prix_vehicule ?? 750),
     anneaux: 0, montant_anneaux: 0,
-    montant_repas: 0, montant_hotel: 0,
+    montant_repas: 0, montant_hotel: 0, essence: 0, montant_essence: 0,
     montant_loc: num(td?.prix_loc ?? 0), montant_transport: num(td?.prix_transport ?? 0),
     invoice_ref: '', paid: false, notes: '',
   });
@@ -740,6 +753,10 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
   const handleHotel = (v) => {
     const h = parseInt(v) || 0;
     setForm(f => ({ ...f, hotel: h, montant_hotel: h * num(td?.prix_hotel ?? 0) }));
+  };
+  const handleEssence = (v) => {
+    const e = parseInt(v) || 0;
+    setForm(f => ({ ...f, essence: e, montant_essence: e * num(td?.prix_essence ?? 0) }));
   };
 
   const handleSubmit = async () => {
@@ -864,7 +881,7 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
         )}
 
         <SectionTitle>Présences</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Véhicules</label>
             <select value={form.vehicules} onChange={e => handleVehicules(e.target.value)} style={inp}>
@@ -884,6 +901,11 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
             <label style={lbl}>Hôtel (nuits){num(td?.prix_hotel) > 0 && <span style={hint}>× {fmt(td.prix_hotel)}/nuit</span>}</label>
             <input type="number" min="0" value={form.hotel} onChange={e => handleHotel(e.target.value)} style={inp} />
             {num(td?.prix_hotel) > 0 && form.hotel > 0 && <div style={{ fontSize: 10, color: THEME.accent.orange, marginTop: 3 }}>= {fmt(form.montant_hotel)}</div>}
+          </div>
+          <div>
+            <label style={lbl}>Essence (bidons){num(td?.prix_essence) > 0 && <span style={hint}>× {fmt(td.prix_essence)}</span>}</label>
+            <input type="number" min="0" value={form.essence} onChange={e => handleEssence(e.target.value)} style={inp} />
+            {num(td?.prix_essence) > 0 && form.essence > 0 && <div style={{ fontSize: 10, color: THEME.accent.orange, marginTop: 3 }}>= {fmt(form.montant_essence)}</div>}
           </div>
         </div>
 
