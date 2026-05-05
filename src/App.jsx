@@ -20,8 +20,23 @@ import { TrackDaysModule } from './pages/TrackDays';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
+const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'vehicles', 'calendar'];
+
 function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
-  const [showAccount, setShowAccount] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+
+  const primaryItems  = NAV_ITEMS.filter(item => PRIMARY_NAV_IDS.includes(item.id));
+  const secondaryItems = NAV_ITEMS.filter(item => !PRIMARY_NAV_IDS.includes(item.id));
+  const moreIsActive  = secondaryItems.some(item => item.id === activeSection);
+
+  const btnStyle = (isActive) => ({
+    flex: 1, display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    color: isActive ? THEME.accent.orange : THEME.text.muted,
+    borderTop: `2px solid ${isActive ? THEME.accent.orange : 'transparent'}`,
+    transition: 'color 0.15s', padding: '0 4px', minWidth: 0,
+  });
 
   return (
     <>
@@ -30,76 +45,82 @@ function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
         background: THEME.bg.sidebar,
         borderTop: `1px solid ${THEME.border}`,
         display: 'flex', alignItems: 'stretch',
-        height: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
-        {NAV_ITEMS.map(item => {
+        {primaryItems.map(item => {
           const isActive = activeSection === item.id;
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 3,
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                color: isActive ? THEME.accent.orange : THEME.text.muted,
-                borderTop: isActive ? `2px solid ${THEME.accent.orange}` : '2px solid transparent',
-                transition: 'color 0.15s',
-              }}
-            >
-              <span style={{ fontSize: 17, lineHeight: 1 }}>{item.icon}</span>
-              <span style={{ fontSize: 8, fontWeight: isActive ? 700 : 500, letterSpacing: '0.02em', textTransform: 'uppercase' }}>{item.label}</span>
+            <button key={item.id} onClick={() => onNavigate(item.id)} style={btnStyle(isActive)}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, letterSpacing: '0.03em', textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.15, overflow: 'hidden', maxWidth: '100%' }}>{item.label}</span>
             </button>
           );
         })}
-        <button
-          onClick={() => setShowAccount(true)}
-          style={{
-            width: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            borderLeft: `1px solid ${THEME.border}`,
-          }}
-        >
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: `${currentMember?.color ?? THEME.accent.orange}22`,
-            border: `1.5px solid ${currentMember?.color ?? THEME.accent.orange}66`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 12, fontWeight: 700, color: currentMember?.color ?? THEME.accent.orange,
-          }}>{currentMember?.avatar ?? '?'}</div>
+
+        {/* Bouton Plus */}
+        <button onClick={() => setShowMore(true)} style={btnStyle(moreIsActive)}>
+          <span style={{ fontSize: 20, lineHeight: 1, letterSpacing: '-2px' }}>···</span>
+          <span style={{ fontSize: 9, fontWeight: moreIsActive ? 700 : 500, letterSpacing: '0.03em', textTransform: 'uppercase' }}>Plus</span>
         </button>
       </div>
 
-      {showAccount && (
+      {/* Bottom sheet */}
+      {showMore && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000 }}
-          onClick={() => setShowAccount(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 2000 }}
+          onClick={() => setShowMore(false)}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
               position: 'absolute', bottom: 0, left: 0, right: 0,
-              background: THEME.bg.card, borderRadius: '16px 16px 0 0',
+              background: THEME.bg.card, borderRadius: '20px 20px 0 0',
               border: `1px solid ${THEME.border}`,
-              padding: '20px 24px 36px',
+              padding: `20px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)`,
             }}
           >
-            <div style={{ width: 36, height: 4, background: THEME.border, borderRadius: 2, margin: '0 auto 20px' }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>
+            <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.15)', borderRadius: 2, margin: '0 auto 20px' }} />
+
+            {/* Autres sections */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 24 }}>
+              {secondaryItems.map(item => {
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { onNavigate(item.id); setShowMore(false); }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                      padding: '16px 8px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: isActive ? THEME.accent.orangeDim : 'rgba(255,255,255,0.05)',
+                      color: isActive ? THEME.accent.orange : THEME.text.secondary,
+                      outline: isActive ? `1px solid ${THEME.accent.orange}44` : 'none',
+                    }}
+                  >
+                    <span style={{ fontSize: 26, lineHeight: 1 }}>{item.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em' }}>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Compte */}
+            <div style={{ borderTop: `1px solid ${THEME.border}`, paddingTop: 16, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
               <div style={{
-                width: 48, height: 48, borderRadius: '50%',
-                background: `${currentMember?.color}22`, border: `2px solid ${currentMember?.color}66`,
+                width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                background: `${currentMember?.color ?? THEME.accent.orange}22`,
+                border: `2px solid ${currentMember?.color ?? THEME.accent.orange}66`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 700, color: currentMember?.color,
-              }}>{currentMember?.avatar}</div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>{currentMember?.name}</div>
+                fontSize: 17, fontWeight: 700, color: currentMember?.color ?? THEME.accent.orange,
+              }}>{currentMember?.avatar ?? '?'}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>{currentMember?.name ?? '—'}</div>
                 <div style={{ fontSize: 11, color: THEME.text.muted }}>EasyDrift</div>
               </div>
             </div>
             <button onClick={onSignOut} style={{
-              width: '100%', padding: '12px', borderRadius: 8, border: 'none',
+              width: '100%', padding: '12px', borderRadius: 10, border: 'none',
               background: 'rgba(239,68,68,0.1)', color: THEME.accent.red,
               cursor: 'pointer', fontFamily: 'Rajdhani, sans-serif',
               fontWeight: 700, fontSize: 14, letterSpacing: '0.04em',
@@ -221,7 +242,7 @@ export default function App() {
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column',
           overflow: 'hidden', minWidth: 0, minHeight: 0,
-          paddingBottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom, 0px))' : 0,
+          paddingBottom: isMobile ? 'calc(58px + env(safe-area-inset-bottom, 0px))' : 0,
         }}>
           {renderSection()}
         </div>
