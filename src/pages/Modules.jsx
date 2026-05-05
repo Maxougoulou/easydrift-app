@@ -28,6 +28,16 @@ export function CalendarModule() {
     if (!eventsByDate[d]) eventsByDate[d] = [];
     eventsByDate[d].push(e);
   });
+  (projects ?? []).filter(p => p.due_date).forEach(p => {
+    const d = p.due_date;
+    if (!eventsByDate[d]) eventsByDate[d] = [];
+    eventsByDate[d].push({
+      id: `proj-${p.id}`,
+      title: `📌 ${p.name}`,
+      color: THEME.accent.orange,
+      type: 'project',
+    });
+  });
 
   let cells = Array(adjustedFirstDay).fill(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
