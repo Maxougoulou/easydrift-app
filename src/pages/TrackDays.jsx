@@ -26,7 +26,7 @@ const STATUS_CFG = {
 
 const fmt  = (n) => `${Number(n ?? 0).toLocaleString('fr-FR')} €`;
 const num  = (n) => Number(n ?? 0);
-const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_loc) + num(p.montant_transport);
+const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_repas) + num(p.montant_hotel) + num(p.montant_loc) + num(p.montant_transport);
 const tdRevenuePaid     = (td) => (td.track_day_participants ?? []).filter(p => p.paid).reduce((s, p) => s + pTotal(p), 0);
 const tdRevenueExpected = (td) => (td.track_day_participants ?? []).reduce((s, p) => s + pTotal(p), 0);
 const tdCosts           = (td) => COST_ITEMS.reduce((s, c) => s + num(td[c.key]), 0);
@@ -356,8 +356,14 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span /><span />
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.vehicules), 0)}</span>
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.pilotes), 0)}</span>
-              <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.repas), 0)}</span>
-              <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.hotel), 0)}</span>
+              <span style={{ textAlign: 'center' }}>
+                <div>{parts.reduce((s, p) => s + num(p.repas), 0)}</div>
+                {parts.some(p => num(p.montant_repas) > 0) && <div style={{ fontSize: 9, color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_repas), 0))}</div>}
+              </span>
+              <span style={{ textAlign: 'center' }}>
+                <div>{parts.reduce((s, p) => s + num(p.hotel), 0)}</div>
+                {parts.some(p => num(p.montant_hotel) > 0) && <div style={{ fontSize: 9, color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_hotel), 0))}</div>}
+              </span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_ddp), 0))}</span>
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.anneaux), 0)}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_loc), 0))}</span>
@@ -450,6 +456,8 @@ function Cell({ children, center, right, muted, active, color }) {
 function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, isMobile }) {
   const ddpRev       = parts.reduce((s, p) => s + num(p.montant_ddp), 0);
   const anneauxRev   = parts.reduce((s, p) => s + num(p.montant_anneaux), 0);
+  const repasRev     = parts.reduce((s, p) => s + num(p.montant_repas), 0);
+  const hotelRev     = parts.reduce((s, p) => s + num(p.montant_hotel), 0);
   const locRev       = parts.reduce((s, p) => s + num(p.montant_loc), 0);
   const transportRev = parts.reduce((s, p) => s + num(p.montant_transport), 0);
 
@@ -485,6 +493,8 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
           {[
             { label: 'Droits de piste', value: ddpRev },
             { label: 'Anneaux',         value: anneauxRev },
+            { label: 'Déjeuners',       value: repasRev },
+            { label: 'Hôtel',           value: hotelRev },
             { label: 'Location',        value: locRev },
             { label: 'Transport',       value: transportRev },
           ].map(r => (
@@ -552,6 +562,8 @@ function TrackDayForm({ td, onSubmit, onClose }) {
     name: td?.name ?? '', circuit: td?.circuit ?? '', date: td?.date ?? '',
     status: td?.status ?? 'À venir', max_participants: td?.max_participants ?? 20,
     prix_vehicule: td?.prix_vehicule ?? 750, prix_anneau: td?.prix_anneau ?? 750,
+    prix_dejeuner: td?.prix_dejeuner ?? 0, prix_hotel: td?.prix_hotel ?? 0,
+    prix_loc: td?.prix_loc ?? 0, prix_transport: td?.prix_transport ?? 0,
     cost_droits_piste: td?.cost_droits_piste ?? 0, cost_repas: td?.cost_repas ?? 0,
     cost_hotel: td?.cost_hotel ?? 0, cost_essence: td?.cost_essence ?? 0,
     cost_transport: td?.cost_transport ?? 0, cost_location_auto: td?.cost_location_auto ?? 0,
@@ -606,6 +618,22 @@ function TrackDayForm({ td, onSubmit, onClose }) {
             <label style={lbl}>Prix par anneau supplémentaire (€)</label>
             <input type="number" min="0" value={form.prix_anneau} onChange={e => set('prix_anneau', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
+          <div>
+            <label style={lbl}>Prix déjeuner par personne (€)</label>
+            <input type="number" min="0" value={form.prix_dejeuner} onChange={e => set('prix_dejeuner', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Prix nuit d'hôtel par personne (€)</label>
+            <input type="number" min="0" value={form.prix_hotel} onChange={e => set('prix_hotel', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Prix LOC véhicule — défaut (€)</label>
+            <input type="number" min="0" value={form.prix_loc} onChange={e => set('prix_loc', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Prix transport — défaut (€)</label>
+            <input type="number" min="0" value={form.prix_transport} onChange={e => set('prix_transport', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
         </div>
 
         <SectionTitle>Coûts organisateur</SectionTitle>
@@ -653,7 +681,8 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
     vehicules: 1, pilotes: 0, repas: 0, hotel: 0,
     montant_ddp: num(td?.prix_vehicule ?? 750),
     anneaux: 0, montant_anneaux: 0,
-    montant_loc: 0, montant_transport: 0,
+    montant_repas: 0, montant_hotel: 0,
+    montant_loc: num(td?.prix_loc ?? 0), montant_transport: num(td?.prix_transport ?? 0),
     invoice_ref: '', paid: false, notes: '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -703,6 +732,14 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
   const handleAnneaux = (v) => {
     const ann = parseInt(v) || 0;
     setForm(f => ({ ...f, anneaux: ann, montant_anneaux: ann * num(td?.prix_anneau ?? 750) }));
+  };
+  const handleRepas = (v) => {
+    const r = parseInt(v) || 0;
+    setForm(f => ({ ...f, repas: r, montant_repas: r * num(td?.prix_dejeuner ?? 0) }));
+  };
+  const handleHotel = (v) => {
+    const h = parseInt(v) || 0;
+    setForm(f => ({ ...f, hotel: h, montant_hotel: h * num(td?.prix_hotel ?? 0) }));
   };
 
   const handleSubmit = async () => {
@@ -839,12 +876,14 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
             <input type="number" min="0" value={form.pilotes} onChange={e => set('pilotes', parseInt(e.target.value) || 0)} style={inp} />
           </div>
           <div>
-            <label style={lbl}>Repas</label>
-            <input type="number" min="0" value={form.repas} onChange={e => set('repas', parseInt(e.target.value) || 0)} style={inp} />
+            <label style={lbl}>Repas{num(td?.prix_dejeuner) > 0 && <span style={hint}>× {fmt(td.prix_dejeuner)}/pers</span>}</label>
+            <input type="number" min="0" value={form.repas} onChange={e => handleRepas(e.target.value)} style={inp} />
+            {num(td?.prix_dejeuner) > 0 && form.repas > 0 && <div style={{ fontSize: 10, color: THEME.accent.orange, marginTop: 3 }}>= {fmt(form.montant_repas)}</div>}
           </div>
           <div>
-            <label style={lbl}>Hôtel (nuits)</label>
-            <input type="number" min="0" value={form.hotel} onChange={e => set('hotel', parseInt(e.target.value) || 0)} style={inp} />
+            <label style={lbl}>Hôtel (nuits){num(td?.prix_hotel) > 0 && <span style={hint}>× {fmt(td.prix_hotel)}/nuit</span>}</label>
+            <input type="number" min="0" value={form.hotel} onChange={e => handleHotel(e.target.value)} style={inp} />
+            {num(td?.prix_hotel) > 0 && form.hotel > 0 && <div style={{ fontSize: 10, color: THEME.accent.orange, marginTop: 3 }}>= {fmt(form.montant_hotel)}</div>}
           </div>
         </div>
 
@@ -863,11 +902,11 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
             <input type="number" min="0" value={form.montant_anneaux} onChange={e => set('montant_anneaux', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
           <div>
-            <label style={lbl}>Location véhicule (€)</label>
+            <label style={lbl}>Location véhicule (€){num(td?.prix_loc) > 0 && <span style={hint}>défaut {fmt(td.prix_loc)}</span>}</label>
             <input type="number" min="0" value={form.montant_loc} onChange={e => set('montant_loc', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
           <div>
-            <label style={lbl}>Transport (€)</label>
+            <label style={lbl}>Transport (€){num(td?.prix_transport) > 0 && <span style={hint}>défaut {fmt(td.prix_transport)}</span>}</label>
             <input type="number" min="0" value={form.montant_transport} onChange={e => set('montant_transport', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
           <div>
