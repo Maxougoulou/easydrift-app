@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Card, Btn, Spinner } from '../components/ui';
 import { useTrackDays } from '../hooks/useTrackDays';
+import { useClients } from '../hooks/useClients';
 import { useAppContext } from '../lib/AppContext';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -40,8 +41,10 @@ export function TrackDaysModule() {
     createTrackDay, updateTrackDay, deleteTrackDay,
     addParticipant, updateParticipant, deleteParticipant,
   } = useTrackDays();
+  const { clients, createClient, updateClient, deleteClient } = useClients();
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showClients, setShowClients] = useState(false);
 
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -60,6 +63,8 @@ export function TrackDaysModule() {
         addParticipant={addParticipant}
         updateParticipant={updateParticipant}
         deleteParticipant={deleteParticipant}
+        clients={clients}
+        createClient={createClient}
       />
     );
   }
@@ -74,7 +79,10 @@ export function TrackDaysModule() {
       <TopBar
         title="Track Days"
         subtitle={`${trackDays.length} événement${trackDays.length !== 1 ? 's' : ''} · ${upcoming} à venir`}
-        actions={<Btn size="sm" onClick={() => setShowForm(true)}>+ Nouveau track day</Btn>}
+        actions={<>
+          <Btn size="sm" variant="secondary" onClick={() => setShowClients(true)}>Clients ({clients.length})</Btn>
+          <Btn size="sm" onClick={() => setShowForm(true)}>+ Nouveau track day</Btn>
+        </>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
@@ -107,7 +115,8 @@ export function TrackDaysModule() {
         )}
       </div>
 
-      {showForm && <TrackDayForm onSubmit={createTrackDay} onClose={() => setShowForm(false)} />}
+      {showForm    && <TrackDayForm onSubmit={createTrackDay} onClose={() => setShowForm(false)} />}
+      {showClients && <ClientsManager clients={clients} onCreate={createClient} onUpdate={updateClient} onDelete={deleteClient} onClose={() => setShowClients(false)} />}
     </div>
   );
 }
@@ -202,7 +211,7 @@ function Stat({ label, value, color, small }) {
 
 // ─── DÉTAIL ───────────────────────────────────────────────────────────────────
 
-function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updateParticipant, deleteParticipant }) {
+function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updateParticipant, deleteParticipant, clients = [], createClient }) {
   const { isMobile } = useAppContext();
   const [showEdit, setShowEdit] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
@@ -281,7 +290,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
       </div>
 
       {showEdit    && <TrackDayForm td={td} onSubmit={(d) => updateTrackDay(td.id, d)} onClose={() => setShowEdit(false)} />}
-      {showAddPart && <ParticipantForm td={td} onSubmit={(d) => addParticipant(td.id, d)} onClose={() => setShowAddPart(false)} />}
+      {showAddPart && <ParticipantForm td={td} clients={clients} createClient={createClient} onSubmit={(d) => addParticipant(td.id, d)} onClose={() => setShowAddPart(false)} />}
     </div>
   );
 }
@@ -631,7 +640,14 @@ function TrackDayForm({ td, onSubmit, onClose }) {
 
 // ─── FORMULAIRE PARTICIPANT ───────────────────────────────────────────────────
 
-function ParticipantForm({ td, onSubmit, onClose }) {
+function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) {
+  const [search, setSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [saveAsClient, setSaveAsClient] = useState(false);
+  const searchRef = useRef(null);
+  const dropdownRef = useRef(null);
+
   const [form, setForm] = useState({
     prenom: '', nom: '', marque: '', modele: '', tel: '', email: '',
     vehicules: 1, pilotes: 0, repas: 0, hotel: 0,
@@ -642,6 +658,44 @@ function ParticipantForm({ td, onSubmit, onClose }) {
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Ferme le dropdown si clic extérieur
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target) && !searchRef.current?.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredClients = search.trim().length === 0 ? clients : clients.filter(c =>
+    `${c.prenom} ${c.nom} ${c.marque} ${c.modele} ${c.email ?? ''}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectClient = (client) => {
+    setSelectedClientId(client.id);
+    setSearch(`${client.prenom} ${client.nom}`);
+    setShowDropdown(false);
+    setForm(f => ({
+      ...f,
+      prenom: client.prenom,
+      nom: client.nom ?? '',
+      marque: client.marque ?? '',
+      modele: client.modele ?? '',
+      tel: client.tel ?? '',
+      email: client.email ?? '',
+    }));
+  };
+
+  const clearClient = () => {
+    setSelectedClientId(null);
+    setSearch('');
+    setForm(f => ({ ...f, prenom: '', nom: '', marque: '', modele: '', tel: '', email: '' }));
+    setSaveAsClient(false);
+    setTimeout(() => searchRef.current?.focus(), 50);
+  };
+
   const handleVehicules = (v) => {
     const vhc = parseFloat(v) || 0;
     setForm(f => ({ ...f, vehicules: vhc, montant_ddp: vhc * num(td?.prix_vehicule ?? 750) }));
@@ -651,7 +705,17 @@ function ParticipantForm({ td, onSubmit, onClose }) {
     setForm(f => ({ ...f, anneaux: ann, montant_anneaux: ann * num(td?.prix_anneau ?? 750) }));
   };
 
+  const handleSubmit = async () => {
+    if (!form.prenom) return;
+    if (saveAsClient && !selectedClientId) {
+      await createClient({ prenom: form.prenom, nom: form.nom, marque: form.marque, modele: form.modele, tel: form.tel, email: form.email });
+    }
+    await onSubmit(form);
+    onClose();
+  };
+
   const total = pTotal(form);
+  const isNewPerson = !selectedClientId;
   const inp = { width: '100%', padding: '8px 12px', borderRadius: 7, background: THEME.bg.input, border: `1px solid ${THEME.border}`, color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none' };
   const lbl = { fontSize: 11, color: THEME.text.muted, marginBottom: 4, display: 'block' };
   const hint = { fontSize: 9, color: THEME.accent.orange, marginLeft: 4 };
@@ -662,32 +726,105 @@ function ParticipantForm({ td, onSubmit, onClose }) {
         <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 4 }}>Ajouter un participant</div>
         <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 20 }}>{td?.name}</div>
 
+        {/* ── Recherche client ── */}
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <label style={lbl}>Rechercher un client existant</label>
+          {selectedClientId ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 7, background: 'rgba(240,120,20,0.1)', border: `1px solid ${THEME.accent.orange}55` }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary }}>{form.prenom} {form.nom}</div>
+                <div style={{ fontSize: 11, color: THEME.text.muted }}>{[form.marque, form.modele].filter(Boolean).join(' ')}{form.tel ? ` · ${form.tel}` : ''}</div>
+              </div>
+              <button onClick={clearClient} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
+                onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+                onMouseLeave={e => e.currentTarget.style.color = THEME.text.muted}
+              >×</button>
+            </div>
+          ) : (
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={e => { setSearch(e.target.value); setShowDropdown(true); }}
+              onFocus={() => setShowDropdown(true)}
+              placeholder={clients.length > 0 ? `Rechercher parmi ${clients.length} client${clients.length > 1 ? 's' : ''}…` : 'Aucun client enregistré — remplissez le formulaire'}
+              style={{ ...inp, paddingRight: 36 }}
+              autoFocus
+            />
+          )}
+
+          {/* Dropdown */}
+          {showDropdown && !selectedClientId && (
+            <div
+              ref={dropdownRef}
+              style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 8, marginTop: 4, maxHeight: 220, overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+            >
+              {filteredClients.length === 0 ? (
+                <div style={{ padding: '12px 14px', fontSize: 12, color: THEME.text.muted, textAlign: 'center' }}>
+                  {search.trim() ? 'Aucun client trouvé — remplissez le formulaire pour une nouvelle personne' : 'Aucun client enregistré'}
+                </div>
+              ) : (
+                filteredClients.slice(0, 10).map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => selectClient(c)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'transparent', border: 'none', cursor: 'pointer', borderBottom: `1px solid ${THEME.border}`, textAlign: 'left' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: THEME.accent.orangeDim, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: THEME.accent.orange, flexShrink: 0 }}>
+                      {c.prenom?.[0]}{c.nom?.[0]}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary }}>{c.prenom} {c.nom}</div>
+                      <div style={{ fontSize: 11, color: THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {[c.marque, c.modele].filter(Boolean).join(' ')}{c.tel ? ` · ${c.tel}` : ''}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Infos identité ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Prénom *</label>
-            <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={inp} autoFocus />
+            <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
           <div>
             <label style={lbl}>Nom</label>
-            <input value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="BRIX" style={inp} />
+            <input value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="BRIX" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
           <div>
             <label style={lbl}>Marque</label>
-            <input value={form.marque} onChange={e => set('marque', e.target.value)} placeholder="Renault" style={inp} />
+            <input value={form.marque} onChange={e => set('marque', e.target.value)} placeholder="Renault" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
           <div>
             <label style={lbl}>Modèle</label>
-            <input value={form.modele} onChange={e => set('modele', e.target.value)} placeholder="M4RS Trophy-R" style={inp} />
+            <input value={form.modele} onChange={e => set('modele', e.target.value)} placeholder="M4RS Trophy-R" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
           <div>
             <label style={lbl}>Téléphone</label>
-            <input value={form.tel} onChange={e => set('tel', e.target.value)} placeholder="+33 6 76 44 45 98" style={inp} />
+            <input value={form.tel} onChange={e => set('tel', e.target.value)} placeholder="+33 6 76 44 45 98" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
           <div>
             <label style={lbl}>Email</label>
-            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jean@exemple.fr" style={inp} />
+            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jean@exemple.fr" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
           </div>
         </div>
+
+        {/* Sauvegarder comme client si nouvelle personne */}
+        {isNewPerson && form.prenom && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 12px', borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: `1px solid rgba(59,130,246,0.2)` }}>
+            <button
+              onClick={() => setSaveAsClient(v => !v)}
+              style={{ width: 20, height: 20, borderRadius: 5, background: saveAsClient ? THEME.accent.blue : 'transparent', border: `2px solid ${saveAsClient ? THEME.accent.blue : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s', flexShrink: 0 }}
+            >{saveAsClient ? '✓' : ''}</button>
+            <span style={{ fontSize: 12, color: THEME.text.secondary }}>Enregistrer <strong>{form.prenom} {form.nom}</strong> dans la base clients</span>
+          </div>
+        )}
 
         <SectionTitle>Présences</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
@@ -756,7 +893,7 @@ function ParticipantForm({ td, onSubmit, onClose }) {
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={async () => { if (!form.prenom) return; await onSubmit(form); onClose(); }}>Ajouter</Btn>
+          <Btn onClick={handleSubmit}>Ajouter</Btn>
         </div>
       </div>
     </div>
@@ -767,6 +904,193 @@ function SectionTitle({ children }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 700, color: THEME.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12, paddingTop: 4, borderTop: `1px solid ${THEME.border}`, paddingTop: 14 }}>
       {children}
+    </div>
+  );
+}
+
+// ─── CLIENTS MANAGER ─────────────────────────────────────────────────────────
+
+function ClientsManager({ clients, onCreate, onUpdate, onDelete, onClose }) {
+  const [search, setSearch] = useState('');
+  const [editClient, setEditClient] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const filtered = search.trim()
+    ? clients.filter(c => `${c.prenom} ${c.nom} ${c.marque} ${c.modele} ${c.tel ?? ''} ${c.email ?? ''}`.toLowerCase().includes(search.toLowerCase()))
+    : clients;
+
+  const inp = { width: '100%', padding: '8px 12px', borderRadius: 7, background: THEME.bg.input, border: `1px solid ${THEME.border}`, color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, width: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '24px 28px 16px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>
+              Base clients
+              <span style={{ fontSize: 12, fontWeight: 400, color: THEME.text.muted, marginLeft: 10 }}>{clients.length} client{clients.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn size="sm" onClick={() => setShowAdd(true)}>+ Ajouter</Btn>
+              <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', borderRadius: 6 }}
+                onMouseEnter={e => e.currentTarget.style.color = THEME.text.primary}
+                onMouseLeave={e => e.currentTarget.style.color = THEME.text.muted}
+              >×</button>
+            </div>
+          </div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher par nom, voiture, contact…"
+            style={inp}
+            autoFocus
+          />
+        </div>
+
+        {/* List */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '0 28px 20px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: THEME.text.muted }}>
+              <div style={{ fontSize: 32, marginBottom: 10, opacity: 0.25 }}>◎</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: THEME.text.secondary, marginBottom: 6 }}>
+                {search.trim() ? 'Aucun résultat' : 'Aucun client enregistré'}
+              </div>
+              <div style={{ fontSize: 12 }}>
+                {search.trim() ? 'Essayez un autre terme' : 'Ajoutez un client ou cochez « Enregistrer comme nouveau client » lors d\'un track day'}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {filtered.map(c => (
+                <ClientRow
+                  key={c.id}
+                  client={c}
+                  isConfirmDelete={confirmDelete === c.id}
+                  onEdit={() => setEditClient(c)}
+                  onDelete={() => onDelete(c.id).then(() => setConfirmDelete(null))}
+                  onAskDelete={() => setConfirmDelete(c.id)}
+                  onCancelDelete={() => setConfirmDelete(null)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showAdd    && <ClientForm onSubmit={async (d) => { await onCreate(d); setShowAdd(false); }} onClose={() => setShowAdd(false)} />}
+      {editClient && <ClientForm client={editClient} onSubmit={async (d) => { await onUpdate(editClient.id, d); setEditClient(null); }} onClose={() => setEditClient(null)} />}
+    </div>
+  );
+}
+
+function ClientRow({ client: c, isConfirmDelete, onEdit, onDelete, onAskDelete, onCancelDelete }) {
+  const [hov, setHov] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => { setHov(false); if (isConfirmDelete) onCancelDelete(); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+        borderRadius: 10, border: `1px solid ${hov ? 'rgba(240,120,20,0.2)' : THEME.border}`,
+        background: hov ? THEME.bg.cardHover : THEME.bg.input,
+        transition: 'all 0.15s', position: 'relative',
+      }}
+    >
+      {/* Avatar */}
+      <div style={{ width: 38, height: 38, borderRadius: '50%', background: THEME.accent.orangeDim, border: `1.5px solid rgba(240,120,20,0.3)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: THEME.accent.orange, flexShrink: 0 }}>
+        {c.prenom?.[0]}{c.nom?.[0]}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary }}>{c.prenom} {c.nom}</div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+          {(c.marque || c.modele) && <span style={{ fontSize: 11, color: THEME.text.secondary }}>{[c.marque, c.modele].filter(Boolean).join(' ')}</span>}
+          {c.tel   && <span style={{ fontSize: 11, color: THEME.text.muted }}>{c.tel}</span>}
+          {c.email && <span style={{ fontSize: 11, color: THEME.accent.blue, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{c.email}</span>}
+        </div>
+      </div>
+
+      {/* Actions */}
+      {hov && !isConfirmDelete && (
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button onClick={onEdit} style={{ background: THEME.accent.orangeDim, border: `1px solid rgba(240,120,20,0.3)`, borderRadius: 7, padding: '5px 12px', color: THEME.accent.orange, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Modifier</button>
+          <button onClick={onAskDelete} style={{ background: 'rgba(239,68,68,0.08)', border: `1px solid rgba(239,68,68,0.2)`, borderRadius: 7, padding: '5px 10px', color: THEME.accent.red, fontSize: 11, cursor: 'pointer' }}>×</button>
+        </div>
+      )}
+      {isConfirmDelete && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: THEME.text.secondary }}>Supprimer ?</span>
+          <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={onCancelDelete} style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${THEME.border}`, borderRadius: 7, padding: '5px 10px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer' }}>Non</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientForm({ client, onSubmit, onClose }) {
+  const [form, setForm] = useState({
+    prenom: client?.prenom ?? '',
+    nom: client?.nom ?? '',
+    marque: client?.marque ?? '',
+    modele: client?.modele ?? '',
+    tel: client?.tel ?? '',
+    email: client?.email ?? '',
+    notes: client?.notes ?? '',
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const inp = { width: '100%', padding: '8px 12px', borderRadius: 7, background: THEME.bg.input, border: `1px solid ${THEME.border}`, color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+  const lbl = { fontSize: 11, color: THEME.text.muted, marginBottom: 4, display: 'block' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(2px)' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 14, padding: '26px 28px', width: 500, maxHeight: '85vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 20 }}>
+          {client ? 'Modifier le client' : 'Nouveau client'}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={lbl}>Prénom *</label>
+            <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={inp} autoFocus />
+          </div>
+          <div>
+            <label style={lbl}>Nom</label>
+            <input value={form.nom} onChange={e => set('nom', e.target.value)} placeholder="BRIX" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Marque</label>
+            <input value={form.marque} onChange={e => set('marque', e.target.value)} placeholder="Renault" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Modèle</label>
+            <input value={form.modele} onChange={e => set('modele', e.target.value)} placeholder="Mégane RS Trophy-R" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Téléphone</label>
+            <input value={form.tel} onChange={e => set('tel', e.target.value)} placeholder="+33 6 12 34 56 78" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Email</label>
+            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="contact@exemple.fr" style={inp} />
+          </div>
+          <div style={{ gridColumn: '1/-1' }}>
+            <label style={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Informations complémentaires…" style={{ ...inp, resize: 'vertical' }} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
+          <Btn onClick={async () => { if (!form.prenom.trim()) return; await onSubmit(form); }}>{client ? 'Enregistrer' : 'Créer'}</Btn>
+        </div>
+      </div>
     </div>
   );
 }
