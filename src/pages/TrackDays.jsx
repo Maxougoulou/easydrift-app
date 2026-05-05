@@ -84,7 +84,7 @@ export function TrackDaysModule() {
           <Btn size="sm" onClick={() => setShowForm(true)}>+ Nouveau track day</Btn>
         </>}
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '12px 12px' : '20px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
           {[
             { label: 'Track days',         value: trackDays.length,                                      color: THEME.text.primary },
@@ -166,7 +166,7 @@ function TrackDayCard({ td, onClick, onDelete }) {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>{td.name}</span>
             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: sc.bg, color: sc.color }}>{td.status}</span>
@@ -179,7 +179,7 @@ function TrackDayCard({ td, onClick, onDelete }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
           <Stat label="Participants" value={`${parts.length}/${td.max_participants ?? '?'}`} color={THEME.accent.blue} />
           <Stat label="Véhicules" value={vhcTotal} color={THEME.text.secondary} />
           <Stat label="Encaissé / Attendu" value={`${fmt(revenue)} / ${fmt(expected)}`} color={THEME.accent.green} small />
@@ -599,12 +599,12 @@ function TrackDayForm({ td, onSubmit, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, padding: '28px 32px', width: 600, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px)', width: 'min(92vw, 600px)', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
         <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 20 }}>
           {td ? 'Modifier le track day' : 'Nouveau track day'}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div style={{ gridColumn: '1/-1' }}>
             <label style={lbl}>Nom de l'événement *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Bresse 18/03/2026" style={inp} />
@@ -630,7 +630,7 @@ function TrackDayForm({ td, onSubmit, onClose }) {
         </div>
 
         <SectionTitle>Tarifs de référence</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div>
             <label style={lbl}>Prix par véhicule (€)</label>
             <input type="number" min="0" value={form.prix_vehicule} onChange={e => set('prix_vehicule', parseFloat(e.target.value) || 0)} style={inp} />
@@ -662,7 +662,7 @@ function TrackDayForm({ td, onSubmit, onClose }) {
         </div>
 
         <SectionTitle>Coûts organisateur</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 12 }}>
           {COST_ITEMS.map(c => (
             <div key={c.key}>
               <label style={lbl}>{c.label} (€)</label>
@@ -804,7 +804,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, padding: '28px 32px', width: 580, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, padding: 'clamp(16px, 4vw, 28px) clamp(16px, 4vw, 28px)', width: 'min(92vw, 580px)', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
         <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 4 }}>
           {isEdit ? `Modifier — ${participant.prenom} ${participant.nom}` : 'Ajouter un participant'}
         </div>
@@ -874,7 +874,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
         )}
 
         {/* ── Infos identité ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Prénom *</label>
             <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
@@ -913,7 +913,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
         )}
 
         <SectionTitle>Présences</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Véhicules</label>
             <select value={form.vehicules} onChange={e => handleVehicules(e.target.value)} style={inp}>
@@ -942,7 +942,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
         </div>
 
         <SectionTitle>Facturation</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Droit de piste (€) <span style={hint}>auto-calculé</span></label>
             <input type="number" min="0" value={form.montant_ddp} onChange={e => set('montant_ddp', parseFloat(e.target.value) || 0)} style={inp} />
@@ -1017,7 +1017,7 @@ function ClientsManager({ clients, onCreate, onUpdate, onDelete, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, width: 620, maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, width: 'min(92vw, 620px)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
 
         {/* Header */}
         <div style={{ padding: '24px 28px 16px', flexShrink: 0 }}>
@@ -1143,12 +1143,12 @@ function ClientForm({ client, onSubmit, onClose }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(2px)' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 14, padding: '26px 28px', width: 500, maxHeight: '85vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 14, padding: 'clamp(16px, 4vw, 26px) clamp(16px, 4vw, 28px)', width: 'min(92vw, 500px)', maxHeight: '85vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}>
         <div style={{ fontSize: 16, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 20 }}>
           {client ? 'Modifier le client' : 'Nouveau client'}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Prénom *</label>
             <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={inp} autoFocus />

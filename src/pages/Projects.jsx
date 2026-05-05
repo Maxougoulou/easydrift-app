@@ -48,14 +48,16 @@ export function ProjectsModule() {
         subtitle={`${filteredProjects.length} projets • ${filteredProjects.filter(p => p.status === 'En cours').length} en cours`}
         actions={
           <>
+            {!isMobile && (
             <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
               {['kanban', 'list'].map(v => (
-                <button key={v} onClick={() => setView(v)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: view === v ? THEME.accent.orange : 'transparent', color: view === v ? '#fff' : THEME.text.secondary, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}>
+                <button key={v} onClick={() => setView(v)} style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: view === v ? THEME.accent.orange : 'transparent', color: view === v ? '#fff' : THEME.text.secondary, fontSize: 12, fontWeight: 600, transition: 'all 0.15s', fontFamily: 'inherit' }}>
                   {v === 'kanban' ? '⬛ Kanban' : '☰ Liste'}
                 </button>
               ))}
             </div>
-            <Btn size="sm" onClick={() => { setNewProjectStatus('À faire'); setShowNewProject(true); }}>+ Nouveau projet</Btn>
+          )}
+            <Btn size="sm" onClick={() => { setNewProjectStatus('À faire'); setShowNewProject(true); }}>{isMobile ? '+ Projet' : '+ Nouveau projet'}</Btn>
           </>
         }
       />
@@ -87,7 +89,7 @@ export function ProjectsModule() {
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'hidden', padding: '20px 24px' }}>
+      <div style={{ flex: 1, overflow: 'hidden', padding: isMobile ? '12px 8px' : '20px 24px' }}>
         {view === 'kanban'
           ? <KanbanView
               projects={filteredProjects}
@@ -289,11 +291,13 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
 
 function ListView({ projects, team, onSelectProject, onDeleteProject }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ overflow: 'auto', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 680 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px 100px 140px 80px 32px', padding: '8px 16px', marginBottom: 4, fontSize: 10, color: THEME.text.muted, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
         <span>Projet</span><span>Statut</span><span>Priorité</span><span>Avancement</span><span>Responsable</span><span>Échéance</span><span />
       </div>
       {projects.map(project => <ListRow key={project.id} project={project} team={team} onClick={() => onSelectProject(project)} onDelete={onDeleteProject} />)}
+    </div>
     </div>
   );
 }

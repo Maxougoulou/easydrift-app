@@ -7,10 +7,10 @@ export function TopBar({ title, subtitle, actions }) {
 
   return (
     <div style={{
-      height: 60, display: 'flex', alignItems: 'center',
-      padding: isMobile ? '0 16px' : '0 24px',
+      minHeight: 60, display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+      padding: isMobile ? '8px 16px' : '0 24px',
       borderBottom: `1px solid ${THEME.border}`,
-      background: THEME.bg.app, gap: isMobile ? 10 : 16, flexShrink: 0,
+      background: THEME.bg.app, gap: isMobile ? 8 : 16, flexShrink: 0,
     }}>
       {!isMobile && (
         <button

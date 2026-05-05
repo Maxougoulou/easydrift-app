@@ -28,7 +28,7 @@ export function VehiclesModule() {
       />
       <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
         <AlertsBar vehicles={vehicles} onPlanify={() => setShowPlanEvent(true)} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginTop: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: 16, marginTop: 20 }}>
           {vehicles.map(v => <VehicleCard key={v.id} vehicle={v} onClick={() => setSelectedVehicle(v)} />)}
         </div>
       </div>
