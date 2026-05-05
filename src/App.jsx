@@ -16,6 +16,7 @@ import { DashboardModule } from './pages/Dashboard';
 import { ProjectsModule } from './pages/Projects';
 import { VehiclesModule } from './pages/Vehicles';
 import { CalendarModule, BudgetModule, MessagesModule, GalleryModule } from './pages/Modules';
+import { TrackDaysModule } from './pages/TrackDays';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
@@ -147,8 +148,9 @@ export default function App() {
   const renderSection = () => {
     switch (section) {
       case 'dashboard': return <DashboardModule />;
-      case 'projects': return <ProjectsModule />;
-      case 'vehicles': return <VehiclesModule />;
+      case 'projects':   return <ProjectsModule />;
+      case 'trackdays':  return <TrackDaysModule />;
+      case 'vehicles':   return <VehiclesModule />;
       case 'calendar': return <CalendarModule />;
       case 'budget': return <BudgetModule />;
       case 'messages': return <MessagesModule />;

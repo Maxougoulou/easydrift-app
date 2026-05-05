@@ -50,11 +50,12 @@ export const PRIORITY_CONFIG = {
 };
 
 export const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '⬡' },
-  { id: 'projects', label: 'Projets', icon: '◈' },
-  { id: 'vehicles', label: 'Véhicules', icon: '◎' },
-  { id: 'calendar', label: 'Calendrier', icon: '▦' },
-  { id: 'budget', label: 'Budget', icon: '◇' },
-  { id: 'messages', label: 'Messages', icon: '◻' },
-  { id: 'gallery', label: 'Galerie', icon: '⬜' },
+  { id: 'dashboard',  label: 'Dashboard',   icon: '⬡' },
+  { id: 'projects',   label: 'Projets',     icon: '◈' },
+  { id: 'trackdays',  label: 'Track Days',  icon: '◉' },
+  { id: 'vehicles',   label: 'Véhicules',   icon: '◎' },
+  { id: 'calendar',   label: 'Calendrier',  icon: '▦' },
+  { id: 'budget',     label: 'Budget',      icon: '◇' },
+  { id: 'messages',   label: 'Messages',    icon: '◻' },
+  { id: 'gallery',    label: 'Galerie',     icon: '⬜' },
 ];
