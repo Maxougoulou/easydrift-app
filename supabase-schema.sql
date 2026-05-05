@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS projects (
   tags             TEXT[] DEFAULT '{}',
   budget_allocated NUMERIC DEFAULT 0,
   budget_spent     NUMERIC DEFAULT 0,
+  workspace        TEXT DEFAULT 'easydrift',
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -182,13 +183,20 @@ INSERT INTO team_members (name, avatar, color, email) VALUES
   ('Maxence', 'M', '#F07814', 'maxence.fortier@gmail.com'),
   ('Alexandre', 'A', '#3B82F6', 'alexandre@easydrift.fr');
 
--- Projets
-INSERT INTO projects (name, status, priority, owner_id, progress, due_date, category, description, tags, budget_allocated, budget_spent) VALUES
-  ('BMW E46 — Build Drift', 'En cours', 'Haute', 1, 65, '2026-06-15', 'Build véhicule', 'Préparation complète de la E46 pour la saison drift 2026. Cage, moteur, suspension.', ARRAY['Drift','Build','Compétition'], 12000, 7800),
-  ('Partenariat Yokohama 2026', 'En attente', 'Haute', 1, 30, '2026-05-20', 'Partenariat', 'Négociation contrat pneus saison 2026. Dotation + visibilité réseaux.', ARRAY['Partenariat','Commercial'], 0, 0),
-  ('App EasyDrift — Suivi Client', 'En cours', 'Moyenne', 2, 45, '2026-07-01', 'Application', 'Développement application mobile pour les clients — suivi en temps réel de leur véhicule.', ARRAY['Dev','Application','Client'], 5000, 2200),
-  ('Événement Drift Masters Mai', 'Terminé', 'Haute', 1, 100, '2026-04-28', 'Événement', 'Organisation et participation au Drift Masters — Circuit de Dijon.', ARRAY['Événement','Compétition'], 3000, 2850),
-  ('Réseaux sociaux — Stratégie Q2', 'En cours', 'Moyenne', 2, 55, '2026-06-30', 'Marketing', 'Plan de contenu Instagram / TikTok pour le Q2 2026.', ARRAY['Marketing','Réseaux'], 1500, 600);
+-- Projets EasyDrift
+INSERT INTO projects (name, status, priority, owner_id, progress, due_date, category, description, tags, budget_allocated, budget_spent, workspace) VALUES
+  ('BMW E46 — Build Drift', 'En cours', 'Haute', 1, 65, '2026-06-15', 'Build véhicule', 'Préparation complète de la E46 pour la saison drift 2026. Cage, moteur, suspension.', ARRAY['Drift','Build','Compétition'], 12000, 7800, 'easydrift'),
+  ('Partenariat Yokohama 2026', 'En attente', 'Haute', 1, 30, '2026-05-20', 'Partenariat', 'Négociation contrat pneus saison 2026. Dotation + visibilité réseaux.', ARRAY['Partenariat','Commercial'], 0, 0, 'easydrift'),
+  ('App EasyDrift — Suivi Client', 'En cours', 'Moyenne', 2, 45, '2026-07-01', 'Application', 'Développement application mobile pour les clients — suivi en temps réel de leur véhicule.', ARRAY['Dev','Application','Client'], 5000, 2200, 'easydrift'),
+  ('Événement Drift Masters Mai', 'Terminé', 'Haute', 1, 100, '2026-04-28', 'Événement', 'Organisation et participation au Drift Masters — Circuit de Dijon.', ARRAY['Événement','Compétition'], 3000, 2850, 'easydrift'),
+  ('Réseaux sociaux — Stratégie Q2', 'En cours', 'Moyenne', 2, 55, '2026-06-30', 'Marketing', 'Plan de contenu Instagram / TikTok pour le Q2 2026.', ARRAY['Marketing','Réseaux'], 1500, 600, 'easydrift');
+
+-- Projets Toyah Games
+INSERT INTO projects (name, status, priority, owner_id, progress, due_date, category, description, tags, budget_allocated, budget_spent, workspace) VALUES
+  ('Jeu mobile — Drift Arena', 'En cours', 'Haute', 2, 40, '2026-09-01', 'Jeu mobile', 'Jeu de drift casual mobile iOS/Android. Physique arcade, personnalisation voiture, classements.', ARRAY['Mobile','Jeu','Drift'], 8000, 3200, 'toyah_games'),
+  ('Site vitrine Toyah Games', 'En cours', 'Moyenne', 2, 70, '2026-05-30', 'Web', 'Site de présentation du studio avec portfolio des jeux et page de contact presse.', ARRAY['Web','Marketing','Studio'], 1500, 1050, 'toyah_games'),
+  ('Partenariat Steam — Greenlight', 'À faire', 'Haute', 1, 10, '2026-10-15', 'Distribution', 'Dépôt et validation du dossier Steam pour la version PC de Drift Arena.', ARRAY['Steam','Distribution','PC'], 0, 0, 'toyah_games'),
+  ('Bande originale Drift Arena', 'Terminé', 'Moyenne', 1, 100, '2026-04-15', 'Audio', 'Composition et intégration de la bande sonore complète du jeu.', ARRAY['Audio','Musique'], 2000, 1800, 'toyah_games');
 
 -- Assignés
 INSERT INTO project_assignees (project_id, team_member_id) VALUES

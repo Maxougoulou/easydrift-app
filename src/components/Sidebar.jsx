@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { THEME, NAV_ITEMS } from '../lib/theme';
 import { useAppContext } from '../lib/AppContext';
 
+const WORKSPACES = [
+  { id: 'easydrift', label: 'EasyDrift', color: THEME.accent.orange },
+  { id: 'toyah_games', label: 'Toyah Games', color: THEME.accent.purple },
+];
+
 export function Sidebar({ activeSection, onNavigate, collapsed, team, currentMember, onSignOut }) {
+  const { workspace, setWorkspace } = useAppContext();
   const [showAccount, setShowAccount] = useState(false);
 
   return (
@@ -12,7 +18,7 @@ export function Sidebar({ activeSection, onNavigate, collapsed, team, currentMem
       borderRight: `1px solid ${THEME.border}`,
       display: 'flex', flexDirection: 'column',
       transition: 'width 0.25s ease',
-      flexShrink: 0, height: '100vh', overflow: 'hidden',
+      flexShrink: 0, height: '100%', overflow: 'hidden',
     }}>
       {/* Logo */}
       <div style={{
@@ -36,29 +42,65 @@ export function Sidebar({ activeSection, onNavigate, collapsed, team, currentMem
       <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
         {NAV_ITEMS.map(item => {
           const isActive = activeSection === item.id;
+          const isProjects = item.id === 'projects';
+
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center',
-                gap: 10, padding: collapsed ? '10px 0' : '10px 12px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: isActive ? THEME.accent.orangeDim : 'transparent',
-                color: isActive ? THEME.accent.orange : THEME.text.secondary,
-                fontSize: 13, fontWeight: isActive ? 700 : 500,
-                transition: 'all 0.15s ease', marginBottom: 2, fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = THEME.text.primary; } }}
-              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = THEME.text.secondary; } }}
-            >
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
-              {!collapsed && <span>{item.label}</span>}
-              {!collapsed && isActive && (
-                <span style={{ marginLeft: 'auto', width: 4, height: 4, borderRadius: '50%', background: THEME.accent.orange }} />
+            <div key={item.id}>
+              <button
+                onClick={() => onNavigate(item.id)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center',
+                  gap: 10, padding: collapsed ? '10px 0' : '10px 12px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: isActive ? THEME.accent.orangeDim : 'transparent',
+                  color: isActive ? THEME.accent.orange : THEME.text.secondary,
+                  fontSize: 13, fontWeight: isActive ? 700 : 500,
+                  transition: 'all 0.15s ease', marginBottom: 2, fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = THEME.text.primary; } }}
+                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = THEME.text.secondary; } }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>}
+                {!collapsed && isProjects && (
+                  <span style={{ fontSize: 10, color: isActive ? THEME.accent.orange : THEME.text.muted, opacity: 0.7 }}>
+                    {isActive ? '▾' : '▸'}
+                  </span>
+                )}
+                {!collapsed && !isProjects && isActive && (
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: THEME.accent.orange }} />
+                )}
+              </button>
+
+              {/* Workspace sub-menu */}
+              {isProjects && isActive && !collapsed && (
+                <div style={{ paddingLeft: 12, paddingBottom: 4 }}>
+                  {WORKSPACES.map(ws => {
+                    const wsActive = workspace === ws.id;
+                    return (
+                      <button
+                        key={ws.id}
+                        onClick={() => { setWorkspace(ws.id); onNavigate('projects'); }}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '7px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                          background: wsActive ? `${ws.color}18` : 'transparent',
+                          color: wsActive ? ws.color : THEME.text.muted,
+                          fontSize: 12, fontWeight: wsActive ? 700 : 500,
+                          fontFamily: 'inherit', transition: 'all 0.15s', marginBottom: 1,
+                        }}
+                        onMouseEnter={e => { if (!wsActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                        onMouseLeave={e => { if (!wsActive) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: wsActive ? ws.color : THEME.text.muted, flexShrink: 0, transition: 'background 0.15s' }} />
+                        {ws.label}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            </button>
+            </div>
           );
         })}
       </nav>

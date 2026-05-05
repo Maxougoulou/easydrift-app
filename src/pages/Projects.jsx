@@ -6,12 +6,20 @@ import { MentionInput, CommentText } from '../components/Notifications';
 import { ProjectForm, TaskForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
 
+const WORKSPACES = [
+  { id: 'easydrift', label: 'EasyDrift', color: THEME.accent.orange },
+  { id: 'toyah_games', label: 'Toyah Games', color: THEME.accent.purple },
+];
+
 export function ProjectsModule() {
-  const { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment, team, currentMember } = useAppContext();
+  const { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment, team, currentMember, workspace, setWorkspace, isMobile } = useAppContext();
   const [view, setView] = useState('kanban');
   const [selectedProject, setSelectedProject] = useState(null);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectStatus, setNewProjectStatus] = useState('À faire');
+
+  const filteredProjects = projects.filter(p => (p.workspace ?? 'easydrift') === workspace);
+  const activeWs = WORKSPACES.find(w => w.id === workspace) ?? WORKSPACES[0];
 
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Projets" subtitle="Chargement…" /><Spinner /></div>;
 
@@ -36,7 +44,7 @@ export function ProjectsModule() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <TopBar
         title="Projets"
-        subtitle={`${projects.length} projets • ${projects.filter(p => p.status === 'En cours').length} en cours`}
+        subtitle={`${filteredProjects.length} projets • ${filteredProjects.filter(p => p.status === 'En cours').length} en cours`}
         actions={
           <>
             <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
@@ -50,24 +58,52 @@ export function ProjectsModule() {
           </>
         }
       />
+
+      {/* Workspace switcher — shown on mobile (sidebar sub-menu not visible) or when sidebar is collapsed */}
+      {isMobile && (
+        <div style={{ display: 'flex', padding: '8px 16px', borderBottom: `1px solid ${THEME.border}`, gap: 6, flexShrink: 0 }}>
+          {WORKSPACES.map(ws => {
+            const isActive = workspace === ws.id;
+            return (
+              <button
+                key={ws.id}
+                onClick={() => setWorkspace(ws.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: isActive ? `${ws.color}20` : 'rgba(255,255,255,0.04)',
+                  color: isActive ? ws.color : THEME.text.muted,
+                  fontSize: 12, fontWeight: isActive ? 700 : 500,
+                  fontFamily: 'inherit', transition: 'all 0.15s',
+                  outline: isActive ? `1px solid ${ws.color}44` : 'none',
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? ws.color : THEME.text.muted, flexShrink: 0 }} />
+                {ws.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ flex: 1, overflow: 'hidden', padding: '20px 24px' }}>
         {view === 'kanban'
           ? <KanbanView
-              projects={projects}
+              projects={filteredProjects}
               team={team}
               onSelectProject={setSelectedProject}
               onAddProject={(status) => { setNewProjectStatus(status); setShowNewProject(true); }}
               onMoveProject={(id, status) => updateProject(id, { status })}
               onDeleteProject={deleteProject}
             />
-          : <ListView projects={projects} team={team} onSelectProject={setSelectedProject} onDeleteProject={deleteProject} />
+          : <ListView projects={filteredProjects} team={team} onSelectProject={setSelectedProject} onDeleteProject={deleteProject} />
         }
       </div>
 
       {showNewProject && (
         <ProjectForm
           team={team}
-          onSubmit={(data) => createProject({ ...data, status: newProjectStatus })}
+          onSubmit={(data) => createProject({ ...data, status: newProjectStatus, workspace })}
           onClose={() => setShowNewProject(false)}
         />
       )}

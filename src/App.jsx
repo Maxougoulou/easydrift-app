@@ -119,6 +119,7 @@ export default function App() {
   const { budget, addBudgetEntry, updateCategory } = useBudget();
   const isMobile = useIsMobile();
   const [section, setSection] = useState('dashboard');
+  const [workspace, setWorkspace] = useState('easydrift');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentMember, setCurrentMember] = useState(null);
 
@@ -165,6 +166,8 @@ export default function App() {
     currentMember,
     loading: dataLoading,
     isMobile,
+    workspace,
+    setWorkspace,
     onNavigate: setSection,
     onToggleSidebar: () => setSidebarCollapsed(c => !c),
     // Projects
