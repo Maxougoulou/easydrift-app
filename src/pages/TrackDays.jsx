@@ -215,6 +215,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
   const { isMobile } = useAppContext();
   const [showEdit, setShowEdit] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
+  const [editParticipant, setEditParticipant] = useState(null);
   const [mobileTab, setMobileTab] = useState('participants');
 
   const parts    = td.track_day_participants ?? [];
@@ -279,18 +280,19 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {isMobile ? (
           mobileTab === 'participants'
-            ? <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} />
+            ? <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} />
             : <FinancesSection td={td} parts={parts} profit={profit} revenue={revenue} expected={expected} costs={costs} onEdit={() => setShowEdit(true)} isMobile />
         ) : (
           <>
-            <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} />
+            <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} />
             <FinancesSection td={td} parts={parts} profit={profit} revenue={revenue} expected={expected} costs={costs} onEdit={() => setShowEdit(true)} />
           </>
         )}
       </div>
 
-      {showEdit    && <TrackDayForm td={td} onSubmit={(d) => updateTrackDay(td.id, d)} onClose={() => setShowEdit(false)} />}
-      {showAddPart && <ParticipantForm td={td} clients={clients} createClient={createClient} onSubmit={(d) => addParticipant(td.id, d)} onClose={() => setShowAddPart(false)} />}
+      {showEdit        && <TrackDayForm td={td} onSubmit={(d) => updateTrackDay(td.id, d)} onClose={() => setShowEdit(false)} />}
+      {showAddPart     && <ParticipantForm td={td} clients={clients} createClient={createClient} onSubmit={(d) => addParticipant(td.id, d)} onClose={() => setShowAddPart(false)} />}
+      {editParticipant && <ParticipantForm td={td} participant={editParticipant} clients={clients} createClient={createClient} onSubmit={(d) => updateParticipant(editParticipant.id, d)} onClose={() => setEditParticipant(null)} />}
     </div>
   );
 }
@@ -299,7 +301,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
 
 const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 78px 44px 32px';
 
-function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant }) {
+function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant, onEditParticipant }) {
   const paidCount = parts.filter(p => p.paid).length;
 
   return (
@@ -347,6 +349,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
                   participant={p}
                   onTogglePaid={() => updateParticipant(p.id, { paid: !p.paid })}
                   onDelete={() => deleteParticipant(p.id)}
+                  onEdit={() => onEditParticipant(p)}
                 />
               ))}
             </div>
@@ -383,7 +386,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
   );
 }
 
-function ParticipantRow({ participant: p, onTogglePaid, onDelete }) {
+function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit }) {
   const [hov, setHov] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const total = pTotal(p);
@@ -430,16 +433,25 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete }) {
           style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
         >{p.paid ? '✓' : ''}</button>
       </div>
-      <div>
+      <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
         {confirmDelete ? (
           <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 4, padding: '2px 6px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
         ) : (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            style={{ background: 'transparent', border: 'none', color: hov ? THEME.text.muted : 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 3px', borderRadius: 4, transition: 'color 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
-            onMouseLeave={e => e.currentTarget.style.color = hov ? THEME.text.muted : 'transparent'}
-          >×</button>
+          <>
+            {hov && (
+              <button
+                onClick={onEdit}
+                title="Modifier"
+                style={{ background: THEME.accent.orangeDim, border: 'none', borderRadius: 4, padding: '2px 6px', color: THEME.accent.orange, fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >✎</button>
+            )}
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ background: 'transparent', border: 'none', color: hov ? THEME.text.muted : 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 3px', borderRadius: 4, transition: 'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+              onMouseLeave={e => e.currentTarget.style.color = hov ? THEME.text.muted : 'transparent'}
+            >×</button>
+          </>
         )}
       </div>
     </div>
@@ -681,7 +693,8 @@ function TrackDayForm({ td, onSubmit, onClose }) {
 
 // ─── FORMULAIRE PARTICIPANT ───────────────────────────────────────────────────
 
-function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) {
+function ParticipantForm({ td, participant, clients = [], createClient, onSubmit, onClose }) {
+  const isEdit = !!participant;
   const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState(null);
@@ -690,13 +703,28 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
   const dropdownRef = useRef(null);
 
   const [form, setForm] = useState({
-    prenom: '', nom: '', marque: '', modele: '', tel: '', email: '',
-    vehicules: 1, pilotes: 0, repas: 0, hotel: 0,
-    montant_ddp: num(td?.prix_vehicule ?? 750),
-    anneaux: 0, montant_anneaux: 0,
-    montant_repas: 0, montant_hotel: 0, essence: 0, montant_essence: 0,
-    montant_loc: num(td?.prix_loc ?? 0), montant_transport: num(td?.prix_transport ?? 0),
-    invoice_ref: '', paid: false, notes: '',
+    prenom: participant?.prenom ?? '',
+    nom: participant?.nom ?? '',
+    marque: participant?.marque ?? '',
+    modele: participant?.modele ?? '',
+    tel: participant?.tel ?? '',
+    email: participant?.email ?? '',
+    vehicules: participant?.vehicules ?? 1,
+    pilotes: participant?.pilotes ?? 0,
+    repas: participant?.repas ?? 0,
+    hotel: participant?.hotel ?? 0,
+    montant_ddp: participant?.montant_ddp ?? num(td?.prix_vehicule ?? 750),
+    anneaux: participant?.anneaux ?? 0,
+    montant_anneaux: participant?.montant_anneaux ?? 0,
+    montant_repas: participant?.montant_repas ?? 0,
+    montant_hotel: participant?.montant_hotel ?? 0,
+    essence: participant?.essence ?? 0,
+    montant_essence: participant?.montant_essence ?? 0,
+    montant_loc: participant?.montant_loc ?? num(td?.prix_loc ?? 0),
+    montant_transport: participant?.montant_transport ?? num(td?.prix_transport ?? 0),
+    invoice_ref: participant?.invoice_ref ?? '',
+    paid: participant?.paid ?? false,
+    notes: participant?.notes ?? '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -777,10 +805,13 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 16, padding: '28px 32px', width: 580, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.7)' }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 4 }}>Ajouter un participant</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', marginBottom: 4 }}>
+          {isEdit ? `Modifier — ${participant.prenom} ${participant.nom}` : 'Ajouter un participant'}
+        </div>
         <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 20 }}>{td?.name}</div>
 
-        {/* ── Recherche client ── */}
+        {/* ── Recherche client (création uniquement) ── */}
+        {!isEdit && (
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <label style={lbl}>Rechercher un client existant</label>
           {selectedClientId ? (
@@ -840,6 +871,7 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
             </div>
           )}
         </div>
+        )}
 
         {/* ── Infos identité ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -869,8 +901,8 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
           </div>
         </div>
 
-        {/* Sauvegarder comme client si nouvelle personne */}
-        {isNewPerson && form.prenom && (
+        {/* Sauvegarder comme client si nouvelle personne (création uniquement) */}
+        {!isEdit && isNewPerson && form.prenom && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '10px 12px', borderRadius: 8, background: 'rgba(59,130,246,0.07)', border: `1px solid rgba(59,130,246,0.2)` }}>
             <button
               onClick={() => setSaveAsClient(v => !v)}
@@ -954,7 +986,7 @@ function ParticipantForm({ td, clients = [], createClient, onSubmit, onClose }) 
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSubmit}>Ajouter</Btn>
+          <Btn onClick={handleSubmit}>{isEdit ? 'Enregistrer' : 'Ajouter'}</Btn>
         </div>
       </div>
     </div>
