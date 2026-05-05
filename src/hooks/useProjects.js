@@ -117,3 +117,53 @@ export function useProjects() {
 
   return { projects, loading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment, refetch: fetchProjects };
 }
+
+export function useProjectAttachments(projectId) {
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  const fetchAttachments = async () => {
+    if (!projectId) return;
+    const { data } = await supabase
+      .from('project_attachments')
+      .select('*, team_members(name, avatar, color)')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
+    setAttachments(data ?? []);
+  };
+
+  useEffect(() => { fetchAttachments(); }, [projectId]);
+
+  const upload = async (file, uploadedBy) => {
+    setUploading(true);
+    try {
+      const path = `${projectId}/${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from('project-attachments').upload(path, file);
+      if (!error) {
+        const { data: { publicUrl } } = supabase.storage.from('project-attachments').getPublicUrl(path);
+        await supabase.from('project_attachments').insert({
+          project_id: projectId,
+          name: file.name,
+          url: publicUrl,
+          size: file.size,
+          mime_type: file.type,
+          storage_path: path,
+          uploaded_by: uploadedBy,
+        });
+        await fetchAttachments();
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async (att) => {
+    if (att.storage_path) {
+      await supabase.storage.from('project-attachments').remove([att.storage_path]);
+    }
+    await supabase.from('project_attachments').delete().eq('id', att.id);
+    await fetchAttachments();
+  };
+
+  return { attachments, uploading, upload, remove };
+}

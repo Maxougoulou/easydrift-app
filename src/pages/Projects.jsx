@@ -5,6 +5,7 @@ import { Avatar, StatusBadge, PriorityBadge, ProgressBar, Card, Btn, Spinner } f
 import { MentionInput, CommentText } from '../components/Notifications';
 import { ProjectForm, TaskForm } from '../components/Forms';
 import { useAppContext } from '../lib/AppContext';
+import { useProjectAttachments } from '../hooks/useProjects';
 
 const WORKSPACES = [
   { id: 'easydrift', label: 'EasyDrift', color: THEME.accent.orange },
@@ -347,9 +348,12 @@ function ListRow({ project, team, onClick, onDelete }) {
 
 function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
   const { isMobile, addNotification } = useAppContext();
+  const { attachments, uploading, upload, remove: removeAttachment } = useProjectAttachments(project.id);
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
   const [mobileTab, setMobileTab] = useState('tasks');
+  const [leftTab, setLeftTab] = useState('tasks');
+  const fileInputRef = useRef(null);
 
   const comments = project.comments ?? [];
   const tasks = project.tasks ?? [];
@@ -373,6 +377,7 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
 
   const StatsAndTasks = () => (
     <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', minWidth: 0 }}>
+      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Avancement', value: `${project.progress}%`, color: THEME.accent.orange },
@@ -395,16 +400,46 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
           </div>
         )}
       </Card>
+
+      {/* Tab bar Tâches / Documents */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani', letterSpacing: '0.03em' }}>Tâches</span>
-        <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>
+        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
+          {[['tasks', `Tâches (${tasks.length})`], ['documents', `Documents${attachments.length > 0 ? ` (${attachments.length})` : ''}`]].map(([val, label]) => (
+            <button key={val} onClick={() => setLeftTab(val)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: leftTab === val ? THEME.accent.orange : 'transparent', color: leftTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+          ))}
+        </div>
+        {leftTab === 'tasks' && <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>}
+        {leftTab === 'documents' && (
+          <>
+            <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f && currentMember) { await upload(f, currentMember.id); e.target.value = ''; } }} />
+            <Btn size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? 'Envoi…' : '+ Fichier'}</Btn>
+          </>
+        )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {tasks.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
-        {tasks.map(task => (
-          <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
-        ))}
-      </div>
+
+      {/* Contenu onglet */}
+      {leftTab === 'tasks' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {tasks.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
+          {tasks.map(task => (
+            <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {attachments.length === 0 && !uploading && (
+            <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>
+              Aucun fichier. Cliquez sur &laquo; + Fichier &raquo; pour déposer une pièce jointe.
+            </div>
+          )}
+          {uploading && (
+            <div style={{ textAlign: 'center', padding: 16, color: THEME.text.muted, fontSize: 12 }}>Envoi en cours…</div>
+          )}
+          {attachments.map(att => (
+            <AttachmentRow key={att.id} att={att} onDelete={() => removeAttachment(att)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -478,8 +513,8 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         </div>
         {isMobile && (
           <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
-            {[['tasks', 'Tâches'], ['discussion', 'Discussion']].map(([val, label]) => (
-              <button key={val} onClick={() => setMobileTab(val)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: mobileTab === val ? THEME.accent.orange : 'transparent', color: mobileTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+            {[['tasks', 'Tâches'], ['documents', `Docs${attachments.length > 0 ? ` (${attachments.length})` : ''}`], ['discussion', 'Discussion']].map(([val, label]) => (
+              <button key={val} onClick={() => { setMobileTab(val); if (val === 'documents') setLeftTab('documents'); if (val === 'tasks') setLeftTab('tasks'); }} style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: mobileTab === val ? THEME.accent.orange : 'transparent', color: mobileTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
             ))}
           </div>
         )}
@@ -487,7 +522,7 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {isMobile ? (
-          mobileTab === 'tasks' ? <StatsAndTasks /> : <DiscussionPanel />
+          mobileTab === 'discussion' ? <DiscussionPanel /> : <StatsAndTasks />
         ) : (
           <>
             <StatsAndTasks />
@@ -510,6 +545,60 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
           onSubmit={(data) => addTask(project.id, data)}
           onClose={() => setShowNewTask(false)}
         />
+      )}
+    </div>
+  );
+}
+
+// ─── PIÈCE JOINTE ────────────────────────────────────────────────────────────
+
+function AttachmentRow({ att, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [hov, setHov] = useState(false);
+  const ext = att.name.split('.').pop().toUpperCase().slice(0, 4);
+  const sizeStr = att.size
+    ? att.size < 1024 * 1024
+      ? `${(att.size / 1024).toFixed(0)} Ko`
+      : `${(att.size / 1024 / 1024).toFixed(1)} Mo`
+    : '';
+  const dateStr = att.created_at ? new Date(att.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+        background: THEME.bg.card,
+        border: `1px solid ${hov ? 'rgba(240,120,20,0.2)' : THEME.border}`,
+        borderRadius: 8, transition: 'all 0.15s',
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 6, flexShrink: 0,
+        background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, fontWeight: 800, color: THEME.text.muted, letterSpacing: '0.03em',
+      }}>{ext}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</div>
+        <div style={{ fontSize: 10, color: THEME.text.muted, marginTop: 2 }}>{[sizeStr, dateStr].filter(Boolean).join(' · ')}</div>
+      </div>
+      <a href={att.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: THEME.accent.orange, fontWeight: 600, textDecoration: 'none', flexShrink: 0, padding: '4px 8px', borderRadius: 5, background: THEME.accent.orangeDim }}>
+        Ouvrir
+      </a>
+      {confirmDelete ? (
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 9px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          style={{ background: 'transparent', border: 'none', color: hov ? THEME.text.muted : 'transparent', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 4px', borderRadius: 4, flexShrink: 0, transition: 'color 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.color = THEME.accent.red}
+          onMouseLeave={e => e.currentTarget.style.color = hov ? THEME.text.muted : 'transparent'}
+        >×</button>
       )}
     </div>
   );
