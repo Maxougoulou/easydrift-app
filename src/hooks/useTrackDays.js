@@ -65,8 +65,7 @@ export function useTrackDays() {
     const { error } = await supabase.from('track_day_participants').update(data).eq('id', id);
     if (error) { toast.error('Erreur', error.message); throw error; }
 
-    if (data.paid === true) {
-      // Fetch fresh data from DB to avoid stale React state
+    if (data.paid === true || data.paid === false) {
       const { data: part } = await supabase
         .from('track_day_participants')
         .select('track_day_id')
@@ -79,10 +78,16 @@ export function useTrackDays() {
           supabase.from('track_days').select('id, status').eq('id', part.track_day_id).single(),
         ]);
 
-        if (td && td.status !== 'Clôturé' && td.status !== 'Annulé') {
-          const allPaid = allParts?.map(p => p.id === id ? { ...p, paid: true } : p).every(p => p.paid);
-          if (allParts?.length > 0 && allPaid) {
+        if (td && td.status !== 'Annulé') {
+          // Simulate the new paid state for this participant
+          const projected = allParts?.map(p => p.id === id ? { ...p, paid: data.paid } : p);
+          const allPaid = projected?.length > 0 && projected.every(p => p.paid);
+
+          if (allPaid && td.status !== 'Clôturé') {
             await supabase.from('track_days').update({ status: 'Clôturé' }).eq('id', td.id);
+          } else if (!allPaid && td.status === 'Clôturé') {
+            // Revert to À venir (displayStatus will show Terminé if date has passed)
+            await supabase.from('track_days').update({ status: 'À venir' }).eq('id', td.id);
           }
         }
       }
