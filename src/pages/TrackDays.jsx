@@ -33,7 +33,7 @@ const displayStatus = (td) => {
 
 const fmt  = (n) => `${Number(n ?? 0).toLocaleString('fr-FR')} €`;
 const num  = (n) => Number(n ?? 0);
-const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_repas) + num(p.montant_hotel) + num(p.montant_essence) + num(p.montant_loc) + num(p.montant_transport);
+const pTotal = (p) => num(p.montant_ddp) + num(p.montant_anneaux) + num(p.montant_repas) + num(p.montant_hotel) + num(p.montant_essence) + num(p.montant_loc) + num(p.montant_transport) + num(p.montant_autre);
 const tdRevenuePaid     = (td) => (td.track_day_participants ?? []).filter(p => p.paid).reduce((s, p) => s + pTotal(p), 0);
 const tdRevenueExpected = (td) => (td.track_day_participants ?? []).reduce((s, p) => s + pTotal(p), 0);
 const tdCosts           = (td) => COST_ITEMS.reduce((s, c) => s + num(td[c.key]), 0);
@@ -353,13 +353,14 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
     : done;
 
   const exportCSV = () => {
-    const headers = ['Nom', 'Prénom', 'Voiture', 'Téléphone', 'Email', 'Véhicules', 'Pilotes', 'Repas', 'Hôtel', 'Essence', 'DDP (€)', 'Anneaux', 'LOC (€)', 'Transport (€)', 'Total (€)', 'N° Facture', 'Facture envoyée', 'Facture payée', 'PDF'];
+    const headers = ['Nom', 'Prénom', 'Voiture', 'Téléphone', 'Email', 'Véhicules', 'Pilotes', 'Repas', 'Hôtel', 'Essence', 'DDP (€)', 'Anneaux', 'LOC (€)', 'Transport (€)', 'Autre libellé', 'Autre (€)', 'Total (€)', 'N° Facture', 'Facture envoyée', 'Facture payée', 'PDF'];
     const rows = parts.map(p => [
       p.nom ?? '', p.prenom ?? '',
       [p.marque, p.modele].filter(Boolean).join(' '),
       p.tel ?? '', p.email ?? '',
       num(p.vehicules), num(p.pilotes), num(p.repas), num(p.hotel), num(p.essence),
       num(p.montant_ddp), num(p.anneaux), num(p.montant_loc), num(p.montant_transport),
+      p.autre_label ?? '', num(p.montant_autre),
       pTotal(p), p.invoice_ref ?? '', p.facture_envoyee ? 'Oui' : 'Non', p.paid ? 'Oui' : 'Non', p.invoice_url ?? '',
     ]);
     const csv = [headers, ...rows]
@@ -693,6 +694,7 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
   const essenceRev   = parts.reduce((s, p) => s + num(p.montant_essence), 0);
   const locRev       = parts.reduce((s, p) => s + num(p.montant_loc), 0);
   const transportRev = parts.reduce((s, p) => s + num(p.montant_transport), 0);
+  const autreRev     = parts.reduce((s, p) => s + num(p.montant_autre), 0);
 
   return (
     <div style={{
@@ -731,6 +733,7 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
             { label: 'Essence',         value: essenceRev },
             { label: 'Location',        value: locRev },
             { label: 'Transport',       value: transportRev },
+            { label: 'Autre',           value: autreRev },
           ].map(r => (
             <FinanceLine key={r.label} label={r.label} value={r.value} color={THEME.accent.green} />
           ))}
@@ -988,6 +991,8 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
     invoice_ref: participant?.invoice_ref ?? '',
     facture_envoyee: participant?.facture_envoyee ?? false,
     paid: participant?.paid ?? false,
+    autre_label: participant?.autre_label ?? '',
+    montant_autre: participant?.montant_autre ?? 0,
     notes: participant?.notes ?? '',
   });
   const [saving, setSaving] = useState(false);
@@ -1236,6 +1241,14 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
           <div>
             <label style={lbl}>Transport (€){num(td?.prix_transport) > 0 && <span style={hint}>défaut {fmt(td.prix_transport)}</span>}</label>
             <input type="number" min="0" value={form.montant_transport} onChange={e => set('montant_transport', parseFloat(e.target.value) || 0)} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Autre — libellé <span style={{ fontSize: 9, color: THEME.text.muted }}>(optionnel)</span></label>
+            <input value={form.autre_label} onChange={e => set('autre_label', e.target.value)} placeholder="Casque, combinaison, chronométrage…" style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Autre — montant (€)</label>
+            <input type="number" min="0" step="1" value={form.montant_autre} onChange={e => set('montant_autre', parseFloat(e.target.value) || 0)} style={inp} />
           </div>
           <div>
             <label style={lbl}>N° facture</label>
