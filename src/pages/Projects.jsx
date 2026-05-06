@@ -193,6 +193,8 @@ function KanbanView({ projects, team, onSelectProject, selectedProjectId, onAddP
                   isDragging={draggingId === project.id}
                   onDelete={onDeleteProject}
                   isSelected={project.id === selectedProjectId}
+                  currentCol={col}
+                  onMove={onMoveProject}
                 />
               ))}
               <button
@@ -209,22 +211,24 @@ function KanbanView({ projects, team, onSelectProject, selectedProjectId, onAddP
   );
 }
 
-function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging, onDelete, isSelected }) {
+function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging, onDelete, isSelected, currentCol, onMove }) {
+  const { isMobile } = useAppContext();
   const [hov, setHov] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const justDragged = useRef(false);
   const doneTasks = (project.tasks ?? []).filter(t => t.status === 'Terminé').length;
   const totalTasks = (project.tasks ?? []).length;
   const daysLeft = project.due_date ? Math.ceil((new Date(project.due_date) - new Date()) / 86400000) : null;
+  const ALL_COLS = ['À faire', 'En attente', 'En cours', 'Terminé'];
 
   return (
     <div
-      draggable
+      draggable={!isMobile}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; justDragged.current = true; onDragStart(); }}
       onDragEnd={() => { onDragEnd(); setTimeout(() => { justDragged.current = false; }, 50); }}
       onClick={() => { if (!justDragged.current && !confirmDelete) onClick(); }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
+      onMouseEnter={() => !isMobile && setHov(true)}
+      onMouseLeave={() => { if (!isMobile) { setHov(false); setConfirmDelete(false); } }}
       style={{
         position: 'relative',
         background: isSelected ? `${THEME.accent.orange}0F` : hov && !isDragging ? THEME.bg.cardHover : THEME.bg.card,
@@ -278,6 +282,22 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
           </span>
         )}
       </div>
+
+      {/* Boutons de déplacement — mobile uniquement */}
+      {isMobile && (
+        <div onClick={e => e.stopPropagation()} style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid rgba(255,255,255,0.06)`, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {ALL_COLS.filter(c => c !== currentCol).map(col => {
+            const cfg = STATUS_CONFIG[col] ?? {};
+            return (
+              <button
+                key={col}
+                onClick={() => onMove(project.id, col)}
+                style={{ fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 20, border: `1px solid ${cfg.dot}55`, background: `${cfg.dot}18`, color: cfg.dot, cursor: 'pointer', fontFamily: 'inherit' }}
+              >→ {col}</button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
