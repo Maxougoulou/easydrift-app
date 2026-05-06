@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { THEME, STATUS_CONFIG } from '../lib/theme';
+import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, PriorityBadge, ProgressBar, Card, Btn, Spinner } from '../components/ui';
 import { MentionInput, CommentText } from '../components/Notifications';
@@ -348,72 +348,129 @@ function ListRow({ project, team, onClick, onDelete }) {
   );
 }
 
-// ─── DÉTAIL PROJET ────────────────────────────────────────────────────────────
+// ─── DÉTAIL PROJET — style Notion ─────────────────────────────────────────────
+
+function NotionProp({ label, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minHeight: 32, padding: '4px 0', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+      <span style={{ fontSize: 11, color: THEME.text.muted, width: 100, flexShrink: 0, fontWeight: 500 }}>{label}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function InlineSelect({ value, options, renderValue, renderOption, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 5, padding: '2px 6px', transition: 'background 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        {renderValue(value)}
+        <span style={{ fontSize: 9, color: THEME.text.muted, lineHeight: 1 }}>▾</span>
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 500, background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.55)', minWidth: 160 }}>
+          {options.map(opt => (
+            <div
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false); }}
+              style={{ padding: '8px 14px', cursor: 'pointer', background: opt === value ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'background 0.1s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = opt === value ? 'rgba(255,255,255,0.05)' : 'transparent'}
+            >{renderOption(opt)}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus, deleteTask, addTask, addComment, updateProject }) {
   const { isMobile, addNotification } = useAppContext();
   const { attachments, uploading, upload, remove: removeAttachment } = useProjectAttachments(project.id);
   const [showEdit, setShowEdit] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
-  const [mobileTab, setMobileTab] = useState('tasks');
-  const [leftTab, setLeftTab] = useState('tasks');
+  const [contentTab, setContentTab] = useState('tasks');
+  const [mobileTab, setMobileTab] = useState('main');
   const fileInputRef = useRef(null);
 
   const comments = project.comments ?? [];
-  const tasks = project.tasks ?? [];
+  const tasks    = project.tasks ?? [];
+  const doneTasks = tasks.filter(t => t.status === 'Terminé').length;
+  const daysLeft  = project.due_date ? Math.ceil((new Date(project.due_date) - new Date()) / 86400000) : null;
 
   const handleSendComment = async (text, mentionIds = []) => {
     if (!currentMember) return;
     await addComment(project.id, currentMember.id, text);
     for (const memberId of mentionIds) {
       if (memberId !== currentMember.id) {
-        await addNotification({
-          type: 'mention',
-          from: currentMember.id,
-          to: memberId,
-          text: `${currentMember.name} t'a mentionné dans « ${project.name} »`,
-          detail: text,
-          projectId: project.id,
-        });
+        await addNotification({ type: 'mention', from: currentMember.id, to: memberId, text: `${currentMember.name} t'a mentionné dans « ${project.name} »`, detail: text, projectId: project.id });
       }
     }
   };
 
-  const StatsAndTasks = () => (
-    <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px', minWidth: 0 }}>
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: 'Avancement', value: `${project.progress}%`, color: THEME.accent.orange },
-          { label: 'Tâches restantes', value: tasks.filter(t => t.status !== 'Terminé').length, color: THEME.accent.blue },
-          { label: 'Budget utilisé', value: project.budget?.allocated ? `${Math.round(project.budget.spent / project.budget.allocated * 100)}%` : '—', color: THEME.accent.green },
-          { label: 'Échéance', value: project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—', color: THEME.text.secondary },
-        ].map(stat => (
-          <Card key={stat.label} style={{ padding: 14 }}>
-            <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 6 }}>{stat.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: stat.color, fontFamily: 'Rajdhani, sans-serif' }}>{stat.value}</div>
-          </Card>
-        ))}
-      </div>
-      <div style={{ marginBottom: 16 }}><ProgressBar value={project.progress} height={6} /></div>
-      <Card style={{ marginBottom: 20, padding: 14 }}>
-        <p style={{ margin: 0, fontSize: 13, color: THEME.text.secondary, lineHeight: 1.6 }}>{project.description || <em style={{ color: THEME.text.muted }}>Aucune description</em>}</p>
-        {(project.tags ?? []).length > 0 && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {project.tags.map(tag => <span key={tag} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, background: THEME.accent.orangeDim, color: THEME.accent.orange, fontWeight: 600 }}>{tag}</span>)}
-          </div>
-        )}
-      </Card>
+  const STATUSES   = ['À faire', 'En attente', 'En cours', 'Terminé', 'Bloqué'];
+  const PRIORITIES = ['Haute', 'Moyenne', 'Basse'];
 
-      {/* Tab bar Tâches / Documents */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
-          {[['tasks', `Tâches (${tasks.length})`], ['documents', `Documents${attachments.length > 0 ? ` (${attachments.length})` : ''}`]].map(([val, label]) => (
-            <button key={val} onClick={() => setLeftTab(val)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: leftTab === val ? THEME.accent.orange : 'transparent', color: leftTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+  // ── Panneau gauche : titre + contenu ──────────────────────────────────────
+  const MainContent = () => (
+    <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '24px 18px' : '40px 52px', minWidth: 0 }}>
+
+      {/* Grand titre */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: isMobile ? 26 : 34, fontWeight: 900, fontFamily: 'Rajdhani, sans-serif', color: THEME.text.primary, lineHeight: 1.15, marginBottom: 10 }}>
+          {project.name}
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {project.category && (
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: THEME.accent.orangeDim, color: THEME.accent.orange, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {project.category}
+            </span>
+          )}
+          {(project.tags ?? []).map(tag => (
+            <span key={tag} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: THEME.text.muted, border: `1px solid rgba(255,255,255,0.08)` }}>
+              {tag}
+            </span>
           ))}
         </div>
-        {leftTab === 'tasks' && <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>}
-        {leftTab === 'documents' && (
+      </div>
+
+      {/* Barre de progression */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+          <span style={{ fontSize: 11, color: THEME.text.muted }}>Avancement</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: THEME.accent.orange, fontFamily: 'Rajdhani' }}>{project.progress}%</span>
+        </div>
+        <ProgressBar value={project.progress} height={5} />
+      </div>
+
+      {/* Description */}
+      {project.description && (
+        <div style={{ marginBottom: 28, padding: '14px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', borderLeft: `3px solid rgba(240,120,20,0.35)` }}>
+          <p style={{ margin: 0, fontSize: 13, color: THEME.text.secondary, lineHeight: 1.75 }}>{project.description}</p>
+        </div>
+      )}
+
+      {/* Tab bar tâches / documents */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
+          {[['tasks', `Tâches (${tasks.length})`], ['documents', `Documents${attachments.length > 0 ? ` (${attachments.length})` : ''}`]].map(([val, label]) => (
+            <button key={val} onClick={() => setContentTab(val)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', background: contentTab === val ? THEME.accent.orange : 'transparent', color: contentTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+          ))}
+        </div>
+        {contentTab === 'tasks' && <Btn size="sm" variant="secondary" onClick={() => setShowNewTask(true)}>+ Tâche</Btn>}
+        {contentTab === 'documents' && (
           <>
             <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f && currentMember) { await upload(f, currentMember.id); e.target.value = ''; } }} />
             <Btn size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>{uploading ? 'Envoi…' : '+ Fichier'}</Btn>
@@ -421,60 +478,114 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         )}
       </div>
 
-      {/* Contenu onglet */}
-      {leftTab === 'tasks' ? (
+      {contentTab === 'tasks' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {tasks.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>Aucune tâche. Ajoutez-en une !</div>}
-          {tasks.map(task => (
-            <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />
-          ))}
+          {tasks.length === 0 && <div style={{ textAlign: 'center', padding: '32px 0', color: THEME.text.muted, fontSize: 13 }}>Aucune tâche — cliquez sur + Tâche !</div>}
+          {tasks.map(task => <TaskRow key={task.id} task={task} team={team} onToggle={updateTaskStatus} onDelete={deleteTask} />)}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {attachments.length === 0 && !uploading && (
-            <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 13 }}>
-              Aucun fichier. Cliquez sur &laquo; + Fichier &raquo; pour déposer une pièce jointe.
-            </div>
-          )}
-          {uploading && (
-            <div style={{ textAlign: 'center', padding: 16, color: THEME.text.muted, fontSize: 12 }}>Envoi en cours…</div>
-          )}
-          {attachments.map(att => (
-            <AttachmentRow key={att.id} att={att} onDelete={() => removeAttachment(att)} />
-          ))}
+          {attachments.length === 0 && !uploading && <div style={{ textAlign: 'center', padding: '32px 0', color: THEME.text.muted, fontSize: 13 }}>Aucun fichier joint.</div>}
+          {uploading && <div style={{ textAlign: 'center', padding: 16, color: THEME.text.muted, fontSize: 12 }}>Envoi en cours…</div>}
+          {attachments.map(att => <AttachmentRow key={att.id} att={att} onDelete={() => removeAttachment(att)} />)}
         </div>
       )}
     </div>
   );
 
-  const DiscussionPanel = () => (
-    <div style={{ width: isMobile ? 'auto' : 320, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: isMobile ? 'none' : `1px solid ${THEME.border}`, flex: isMobile ? 1 : 'unset', minHeight: 0 }}>
-      <div style={{ padding: '14px 16px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>Discussion</span>
-        <span style={{ fontSize: 11, color: THEME.text.muted }}>{comments.length} message{comments.length !== 1 ? 's' : ''}</span>
+  // ── Panneau droit : propriétés + discussion ────────────────────────────────
+  const SidePanel = () => (
+    <div style={{ width: isMobile ? '100%' : 300, flexShrink: 0, borderLeft: isMobile ? 'none' : `1px solid ${THEME.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {/* Propriétés */}
+      <div style={{ padding: '22px 18px 16px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Propriétés</div>
+
+        <NotionProp label="Statut">
+          <InlineSelect
+            value={project.status ?? 'À faire'}
+            options={STATUSES}
+            renderValue={(s) => <StatusBadge status={s} small />}
+            renderOption={(s) => <StatusBadge status={s} small />}
+            onChange={(s) => updateProject(project.id, { status: s })}
+          />
+        </NotionProp>
+
+        <NotionProp label="Priorité">
+          <InlineSelect
+            value={project.priority ?? 'Moyenne'}
+            options={PRIORITIES}
+            renderValue={(p) => {
+              const cfg = PRIORITY_CONFIG[p];
+              return cfg ? <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span> : <span style={{ fontSize: 11, color: THEME.text.muted }}>—</span>;
+            }}
+            renderOption={(p) => {
+              const cfg = PRIORITY_CONFIG[p];
+              return cfg ? <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span> : <span>{p}</span>;
+            }}
+            onChange={(p) => updateProject(project.id, { priority: p })}
+          />
+        </NotionProp>
+
+        <NotionProp label="Responsables">
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {(project.assignees ?? []).length === 0
+              ? <span style={{ fontSize: 12, color: THEME.text.muted }}>—</span>
+              : (project.assignees ?? []).map(uid => { const m = team.find(t => t.id === uid); return m ? <Avatar key={uid} member={m} size={22} showName /> : null; })}
+          </div>
+        </NotionProp>
+
+        <NotionProp label="Échéance">
+          <span style={{ fontSize: 12, fontWeight: daysLeft !== null ? 600 : 400, color: daysLeft !== null && daysLeft < 0 ? THEME.accent.red : daysLeft !== null && daysLeft < 7 ? THEME.accent.yellow : THEME.text.secondary }}>
+            {project.due_date ? new Date(project.due_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+            {daysLeft !== null && (
+              <span style={{ fontSize: 10, marginLeft: 6, opacity: 0.7 }}>
+                {daysLeft < 0 ? `(${Math.abs(daysLeft)}j dépassé)` : daysLeft === 0 ? '(auj.)' : `(dans ${daysLeft}j)`}
+              </span>
+            )}
+          </span>
+        </NotionProp>
+
+        {(project.budget?.allocated ?? 0) > 0 && (
+          <NotionProp label="Budget">
+            <span style={{ fontSize: 12, color: THEME.text.secondary }}>
+              {(project.budget.spent ?? 0).toLocaleString('fr-FR')} € / {project.budget.allocated.toLocaleString('fr-FR')} €
+            </span>
+          </NotionProp>
+        )}
+
+        <NotionProp label="Tâches">
+          <span style={{ fontSize: 12, color: THEME.text.secondary }}>{doneTasks}/{tasks.length} terminées</span>
+        </NotionProp>
+
+        <div style={{ marginTop: 14 }}>
+          <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)} style={{ width: '100%', justifyContent: 'center' }}>Modifier le projet</Btn>
+        </div>
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+      {/* Discussion */}
+      <div style={{ padding: '12px 16px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.09em' }}>Discussion</span>
+        {comments.length > 0 && <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.07)', color: THEME.text.muted, borderRadius: 8, padding: '0 6px', fontWeight: 600 }}>{comments.length}</span>}
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {comments.length === 0 && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: THEME.text.muted, gap: 8, padding: '20px 0' }}>
-            <span style={{ fontSize: 28 }}>💬</span>
-            <span style={{ fontSize: 12 }}>Démarrez la discussion !</span>
-            <span style={{ fontSize: 11, color: THEME.text.muted, textAlign: 'center' }}>Utilisez @ pour notifier un membre</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: THEME.text.muted, gap: 6, padding: '24px 0', opacity: 0.6 }}>
+            <span style={{ fontSize: 22 }}>💬</span>
+            <span style={{ fontSize: 11 }}>Démarrez la discussion</span>
           </div>
         )}
         {comments.map(c => {
           const member = c.team_members ?? team.find(m => m.id === (c.author_id ?? c.author));
           const isMe = (c.author_id ?? c.author) === currentMember?.id;
           return (
-            <div key={c.id} style={{ display: 'flex', gap: 8, flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
-              <Avatar member={member} size={26} />
-              <div style={{ maxWidth: '78%' }}>
+            <div key={c.id} style={{ display: 'flex', gap: 7, flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
+              <Avatar member={member} size={24} />
+              <div style={{ maxWidth: '80%' }}>
                 {!isMe && <div style={{ fontSize: 10, fontWeight: 700, color: member?.color, marginBottom: 3 }}>{member?.name}</div>}
-                <div style={{
-                  background: isMe ? THEME.accent.orange : THEME.bg.card,
-                  border: `1px solid ${isMe ? 'transparent' : THEME.border}`,
-                  borderRadius: isMe ? '10px 3px 10px 10px' : '3px 10px 10px 10px',
-                  padding: '8px 12px', fontSize: 12, color: isMe ? '#fff' : THEME.text.primary, lineHeight: 1.5,
-                }}><CommentText text={c.text} team={team} /></div>
+                <div style={{ background: isMe ? THEME.accent.orange : THEME.bg.card, border: `1px solid ${isMe ? 'transparent' : THEME.border}`, borderRadius: isMe ? '10px 3px 10px 10px' : '3px 10px 10px 10px', padding: '7px 11px', fontSize: 12, color: isMe ? '#fff' : THEME.text.primary, lineHeight: 1.5 }}>
+                  <CommentText text={c.text} team={team} />
+                </div>
                 <div style={{ fontSize: 9, color: THEME.text.muted, marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{c.date} à {c.time}</div>
               </div>
             </div>
@@ -482,74 +593,42 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
         })}
       </div>
       <div style={{ padding: '10px 12px', borderTop: `1px solid ${THEME.border}`, flexShrink: 0 }}>
-        {currentMember ? (
-          <MentionInput onSend={handleSendComment} placeholder="Message… @ pour notifier" team={team} currentMemberId={currentMember.id} />
-        ) : (
-          <div style={{ fontSize: 11, color: THEME.accent.red, textAlign: 'center', padding: '10px 0', background: THEME.accent.redDim, borderRadius: 8 }}>
-            Compte non lié — mets à jour <code>auth_user_id</code> dans Supabase
-          </div>
-        )}
+        {currentMember
+          ? <MentionInput onSend={handleSendComment} placeholder="Message… @ pour notifier" team={team} currentMemberId={currentMember.id} />
+          : <div style={{ fontSize: 11, color: THEME.accent.red, textAlign: 'center', padding: '10px 0', background: THEME.accent.redDim, borderRadius: 8 }}>Compte non lié — mets à jour auth_user_id dans Supabase</div>
+        }
       </div>
     </div>
   );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <TopBar
-        title={project.name}
-        subtitle={project.category}
-        actions={<>
-          <StatusBadge status={project.status} />
-          <Btn size="sm" onClick={() => setShowEdit(true)}>Modifier</Btn>
-        </>}
-      />
-
-      <div style={{ padding: '10px 24px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: 'rgba(255,255,255,0.01)' }}>
+      {/* Header slim */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0, background: 'rgba(255,255,255,0.01)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={onBack}
-            style={{ background: 'none', border: 'none', color: THEME.accent.orange, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0, fontFamily: 'inherit' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          >← Projets</button>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', color: THEME.accent.orange, cursor: 'pointer', fontSize: 12, fontWeight: 700, padding: 0, fontFamily: 'inherit' }}>← Projets</button>
           <span style={{ color: THEME.text.muted, fontSize: 12 }}>/</span>
-          <span style={{ color: THEME.text.secondary, fontSize: 12, fontWeight: 600 }}>{project.name}</span>
+          <span style={{ color: THEME.text.muted, fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</span>
         </div>
         {isMobile && (
           <div style={{ display: 'flex', gap: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3 }}>
-            {[['tasks', 'Tâches'], ['documents', `Docs${attachments.length > 0 ? ` (${attachments.length})` : ''}`], ['discussion', 'Discussion']].map(([val, label]) => (
-              <button key={val} onClick={() => { setMobileTab(val); if (val === 'documents') setLeftTab('documents'); if (val === 'tasks') setLeftTab('tasks'); }} style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: mobileTab === val ? THEME.accent.orange : 'transparent', color: mobileTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
+            {[['main', 'Tâches'], ['side', 'Infos']].map(([val, label]) => (
+              <button key={val} onClick={() => setMobileTab(val)} style={{ padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: mobileTab === val ? THEME.accent.orange : 'transparent', color: mobileTab === val ? '#fff' : THEME.text.secondary, fontSize: 11, fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.15s' }}>{label}</button>
             ))}
           </div>
         )}
       </div>
 
+      {/* Corps */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-        {isMobile ? (
-          mobileTab === 'discussion' ? <DiscussionPanel /> : <StatsAndTasks />
-        ) : (
-          <>
-            <StatsAndTasks />
-            <DiscussionPanel />
-          </>
-        )}
+        {isMobile
+          ? mobileTab === 'main' ? <MainContent /> : <SidePanel />
+          : <><MainContent /><SidePanel /></>
+        }
       </div>
 
-      {showEdit && (
-        <ProjectForm
-          project={project}
-          team={team}
-          onSubmit={(data) => updateProject(project.id, data)}
-          onClose={() => setShowEdit(false)}
-        />
-      )}
-      {showNewTask && (
-        <TaskForm
-          team={team}
-          onSubmit={(data) => addTask(project.id, data)}
-          onClose={() => setShowNewTask(false)}
-        />
-      )}
+      {showEdit    && <ProjectForm project={project} team={team} onSubmit={(data) => updateProject(project.id, data)} onClose={() => setShowEdit(false)} />}
+      {showNewTask && <TaskForm team={team} onSubmit={(data) => addTask(project.id, data)} onClose={() => setShowNewTask(false)} />}
     </div>
   );
 }
