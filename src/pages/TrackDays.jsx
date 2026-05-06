@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { THEME } from '../lib/theme';
+import { toast } from '../lib/toast';
 import { TopBar } from '../components/TopBar';
 import { Card, Btn, Spinner } from '../components/ui';
 import { useTrackDays } from '../hooks/useTrackDays';
@@ -633,7 +634,14 @@ function PdfCell({ invoiceUrl, onUpload }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    try { await onUpload(file); } finally { setUploading(false); e.target.value = ''; }
+    try {
+      await onUpload(file);
+    } catch (err) {
+      console.error('PDF upload error:', err);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   return (
@@ -827,7 +835,9 @@ function TrackDayForm({ td, onSubmit, onClose }) {
     cost_transport: td?.cost_transport ?? 0, cost_location_auto: td?.cost_location_auto ?? 0,
     cost_autre: td?.cost_autre ?? 0, notes: td?.notes ?? '',
   });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: undefined })); };
 
   const totalCostPreview = COST_ITEMS.reduce((s, c) => s + num(form[c.key]), 0);
 
@@ -844,15 +854,18 @@ function TrackDayForm({ td, onSubmit, onClose }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div style={{ gridColumn: '1/-1' }}>
             <label style={lbl}>Nom de l'événement *</label>
-            <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Bresse 18/03/2026" style={inp} />
+            <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Bresse 18/03/2026" style={{ ...inp, borderColor: errors.name ? THEME.accent.red : undefined }} />
+            {errors.name && <div style={{ fontSize: 11, color: THEME.accent.red, marginTop: 3 }}>{errors.name}</div>}
           </div>
           <div>
             <label style={lbl}>Circuit *</label>
-            <input value={form.circuit} onChange={e => set('circuit', e.target.value)} placeholder="Circuit de Bresse" style={inp} />
+            <input value={form.circuit} onChange={e => set('circuit', e.target.value)} placeholder="Circuit de Bresse" style={{ ...inp, borderColor: errors.circuit ? THEME.accent.red : undefined }} />
+            {errors.circuit && <div style={{ fontSize: 11, color: THEME.accent.red, marginTop: 3 }}>{errors.circuit}</div>}
           </div>
           <div>
             <label style={lbl}>Date *</label>
-            <input type="date" value={form.date} onChange={e => set('date', e.target.value)} style={inp} />
+            <input type="date" value={form.date} onChange={e => set('date', e.target.value)} style={{ ...inp, borderColor: errors.date ? THEME.accent.red : undefined }} />
+            {errors.date && <div style={{ fontSize: 11, color: THEME.accent.red, marginTop: 3 }}>{errors.date}</div>}
           </div>
           <div>
             <label style={lbl}>Statut</label>
@@ -918,9 +931,22 @@ function TrackDayForm({ td, onSubmit, onClose }) {
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={async () => { if (!form.name || !form.circuit || !form.date) return; await onSubmit(form); onClose(); }}>
-            {td ? 'Enregistrer' : 'Créer'}
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Annuler</Btn>
+          <Btn
+            disabled={saving}
+            onClick={async () => {
+              const errs = {};
+              if (!form.name.trim()) errs.name = 'Champ requis';
+              if (!form.circuit.trim()) errs.circuit = 'Champ requis';
+              if (!form.date) errs.date = 'Champ requis';
+              if (Object.keys(errs).length) { setErrors(errs); return; }
+              setSaving(true);
+              try { await onSubmit(form); onClose(); }
+              catch (_) { /* toast already shown in hook */ }
+              finally { setSaving(false); }
+            }}
+          >
+            {saving ? 'Enregistrement…' : td ? 'Enregistrer' : 'Créer'}
           </Btn>
         </div>
       </div>
@@ -964,6 +990,8 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
     paid: participant?.paid ?? false,
     notes: participant?.notes ?? '',
   });
+  const [saving, setSaving] = useState(false);
+  const [prenomError, setPrenomError] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Ferme le dropdown si clic extérieur
@@ -1026,12 +1054,19 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
   };
 
   const handleSubmit = async () => {
-    if (!form.prenom) return;
-    if (saveAsClient && !selectedClientId) {
-      await createClient({ prenom: form.prenom, nom: form.nom, marque: form.marque, modele: form.modele, tel: form.tel, email: form.email });
+    if (!form.prenom.trim()) { setPrenomError('Prénom requis'); return; }
+    setSaving(true);
+    try {
+      if (saveAsClient && !selectedClientId) {
+        await createClient({ prenom: form.prenom, nom: form.nom, marque: form.marque, modele: form.modele, tel: form.tel, email: form.email });
+      }
+      await onSubmit(form);
+      onClose();
+    } catch (_) {
+      /* toast already shown in hook */
+    } finally {
+      setSaving(false);
     }
-    await onSubmit(form);
-    onClose();
   };
 
   const total = pTotal(form);
@@ -1115,7 +1150,8 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
           <div>
             <label style={lbl}>Prénom *</label>
-            <input value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Jean-Rémi" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input }} />
+            <input value={form.prenom} onChange={e => { set('prenom', e.target.value); setPrenomError(''); }} placeholder="Jean-Rémi" style={{ ...inp, background: selectedClientId ? 'rgba(240,120,20,0.06)' : THEME.bg.input, borderColor: prenomError ? THEME.accent.red : undefined }} />
+            {prenomError && <div style={{ fontSize: 11, color: THEME.accent.red, marginTop: 3 }}>{prenomError}</div>}
           </div>
           <div>
             <label style={lbl}>Nom</label>
@@ -1232,8 +1268,8 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
         </div>
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSubmit}>{isEdit ? 'Enregistrer' : 'Ajouter'}</Btn>
+          <Btn variant="secondary" onClick={onClose} disabled={saving}>Annuler</Btn>
+          <Btn onClick={handleSubmit} disabled={saving}>{saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Ajouter'}</Btn>
         </div>
       </div>
     </div>

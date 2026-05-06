@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
 
 export function useTrackDays() {
   const [trackDays, setTrackDays] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetch = async () => {
+  const fetchData = async () => {
     const { data, error } = await supabase
       .from('track_days')
       .select('*, track_day_participants(*)')
@@ -15,15 +16,15 @@ export function useTrackDays() {
   };
 
   useEffect(() => {
-    fetch();
+    fetchData();
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetch();
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchData();
     });
 
     const channel = supabase.channel('track-days-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'track_days' }, fetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'track_day_participants' }, fetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'track_days' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'track_day_participants' }, fetchData)
       .subscribe();
 
     return () => {
@@ -33,54 +34,80 @@ export function useTrackDays() {
   }, []);
 
   const createTrackDay = async (data) => {
-    await supabase.from('track_days').insert(data);
-    await fetch();
+    const { error } = await supabase.from('track_days').insert(data);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Track day créé');
   };
 
   const updateTrackDay = async (id, data) => {
-    await supabase.from('track_days').update(data).eq('id', id);
-    await fetch();
+    const { error } = await supabase.from('track_days').update(data).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Track day mis à jour');
   };
 
   const deleteTrackDay = async (id) => {
-    await supabase.from('track_days').delete().eq('id', id);
-    await fetch();
+    const { error } = await supabase.from('track_days').delete().eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Track day supprimé');
   };
 
   const addParticipant = async (trackDayId, data) => {
-    await supabase.from('track_day_participants').insert({ track_day_id: trackDayId, ...data });
-    await fetch();
+    const { error } = await supabase.from('track_day_participants').insert({ track_day_id: trackDayId, ...data });
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Participant ajouté');
   };
 
   const updateParticipant = async (id, data) => {
-    await supabase.from('track_day_participants').update(data).eq('id', id);
+    const { error } = await supabase.from('track_day_participants').update(data).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
 
     if (data.paid === true) {
-      const td = trackDays.find(d => d.track_day_participants?.some(p => p.id === id));
-      if (td && td.status !== 'Clôturé' && td.status !== 'Annulé') {
-        const updated = td.track_day_participants.map(p => p.id === id ? { ...p, paid: true } : p);
-        if (updated.length > 0 && updated.every(p => p.paid)) {
-          await supabase.from('track_days').update({ status: 'Clôturé' }).eq('id', td.id);
+      // Fetch fresh data from DB to avoid stale React state
+      const { data: part } = await supabase
+        .from('track_day_participants')
+        .select('track_day_id')
+        .eq('id', id)
+        .single();
+
+      if (part) {
+        const [{ data: allParts }, { data: td }] = await Promise.all([
+          supabase.from('track_day_participants').select('id, paid').eq('track_day_id', part.track_day_id),
+          supabase.from('track_days').select('id, status').eq('id', part.track_day_id).single(),
+        ]);
+
+        if (td && td.status !== 'Clôturé' && td.status !== 'Annulé') {
+          const allPaid = allParts?.map(p => p.id === id ? { ...p, paid: true } : p).every(p => p.paid);
+          if (allParts?.length > 0 && allPaid) {
+            await supabase.from('track_days').update({ status: 'Clôturé' }).eq('id', td.id);
+          }
         }
       }
     }
 
-    await fetch();
+    await fetchData();
   };
 
   const deleteParticipant = async (id) => {
-    await supabase.from('track_day_participants').delete().eq('id', id);
-    await fetch();
+    const { error } = await supabase.from('track_day_participants').delete().eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Participant supprimé');
   };
 
   const uploadParticipantInvoice = async (participantId, file) => {
     const ext = file.name.split('.').pop();
     const path = `${participantId}/invoice.${ext}`;
     const { error } = await supabase.storage.from('track-day-invoices').upload(path, file, { upsert: true });
-    if (error) throw error;
+    if (error) { toast.error('Erreur upload', error.message); throw error; }
     const { data: { publicUrl } } = supabase.storage.from('track-day-invoices').getPublicUrl(path);
-    await supabase.from('track_day_participants').update({ invoice_url: publicUrl }).eq('id', participantId);
-    await fetch();
+    const { error: updateError } = await supabase.from('track_day_participants').update({ invoice_url: publicUrl }).eq('id', participantId);
+    if (updateError) { toast.error('Erreur', updateError.message); throw updateError; }
+    await fetchData();
+    toast.success('Facture déposée');
   };
 
   return { trackDays, loading, createTrackDay, updateTrackDay, deleteTrackDay, addParticipant, updateParticipant, deleteParticipant, uploadParticipantInvoice };

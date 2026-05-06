@@ -79,27 +79,29 @@ export function Card({ children, style = {}, onClick, hover = true }) {
   );
 }
 
-export function Btn({ children, variant = 'primary', size = 'md', onClick, style: extraStyle = {}, type = 'button' }) {
+export function Btn({ children, variant = 'primary', size = 'md', onClick, style: extraStyle = {}, type = 'button', disabled = false }) {
   const [hov, setHov] = useState(false);
   const base = {
-    border: 'none', borderRadius: 8, cursor: 'pointer',
+    border: 'none', borderRadius: 8, cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily: 'Rajdhani, sans-serif', fontWeight: 700,
     letterSpacing: '0.04em', transition: 'all 0.15s ease',
     display: 'inline-flex', alignItems: 'center', gap: 6,
     fontSize: size === 'sm' ? 12 : size === 'lg' ? 15 : 13,
     padding: size === 'sm' ? '6px 12px' : size === 'lg' ? '12px 24px' : '8px 16px',
+    opacity: disabled ? 0.5 : 1,
   };
   const variants = {
-    primary: { background: hov ? '#FF9A3C' : THEME.accent.orange, color: '#fff' },
-    secondary: { background: hov ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)', color: THEME.text.primary, border: `1px solid ${THEME.border}` },
-    ghost: { background: 'transparent', color: THEME.text.secondary },
-    danger: { background: hov ? '#dc2626' : THEME.accent.red, color: '#fff' },
+    primary:   { background: hov && !disabled ? '#FF9A3C' : THEME.accent.orange, color: '#fff' },
+    secondary: { background: hov && !disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)', color: THEME.text.primary, border: `1px solid ${THEME.border}` },
+    ghost:     { background: 'transparent', color: THEME.text.secondary },
+    danger:    { background: hov && !disabled ? '#dc2626' : THEME.accent.red, color: '#fff' },
   };
   return (
     <button
       type={type}
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => !disabled && setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{ ...base, ...variants[variant], ...extraStyle }}
     >{children}</button>

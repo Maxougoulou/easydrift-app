@@ -9,6 +9,7 @@ import { useBudget } from './hooks/useBudget';
 import { useNotifications } from './hooks/useNotifications';
 import { useIsMobile } from './hooks/useIsMobile';
 import { supabase } from './lib/supabase';
+import { toast } from './lib/toast';
 import { Sidebar } from './components/Sidebar';
 import { ToastContainer } from './components/Notifications';
 import { LoginPage } from './pages/Login';
@@ -153,6 +154,7 @@ export default function App() {
   }, [user, team]);
 
   const { notifications, toasts, unreadCount, markAllRead, markRead, addNotification, showToast } = useNotifications(currentMember?.id);
+  toast._init(showToast);
 
   const dataLoading = projectsLoading || vehiclesLoading || teamLoading;
 

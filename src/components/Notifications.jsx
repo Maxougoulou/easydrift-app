@@ -130,8 +130,8 @@ function ToastItem({ toast }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
-  const icons = { mention: '💬', task: '✅', email: '📧', info: 'ℹ️', success: '🎉' };
-  const colors = { mention: THEME.accent.orange, task: THEME.accent.green, email: THEME.accent.blue, info: THEME.text.muted, success: THEME.accent.green };
+  const icons  = { mention: '💬', task: '✅', email: '📧', info: 'ℹ️', success: '✓', error: '✕' };
+  const colors = { mention: THEME.accent.orange, task: THEME.accent.green, email: THEME.accent.blue, info: THEME.text.muted, success: THEME.accent.green, error: THEME.accent.red };
 
   return (
     <div style={{

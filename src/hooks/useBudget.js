@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
 
 export function useBudget() {
   const [budget, setBudget] = useState({ monthly: [], categories: [] });
   const [loading, setLoading] = useState(true);
 
-  const fetchBudget = async () => {
+  const fetchData = async () => {
     const [{ data: monthly }, { data: categories }] = await Promise.all([
       supabase.from('budget_monthly').select('*').order('id'),
       supabase.from('budget_categories').select('*').order('id'),
@@ -15,16 +16,16 @@ export function useBudget() {
   };
 
   useEffect(() => {
-    fetchBudget();
+    fetchData();
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchBudget();
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchData();
     });
 
     const channel = supabase
       .channel('budget-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_monthly' }, fetchBudget)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_categories' }, fetchBudget)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_monthly' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_categories' }, fetchData)
       .subscribe();
 
     return () => {
@@ -34,18 +35,23 @@ export function useBudget() {
   }, []);
 
   const addBudgetEntry = async ({ mode, ...data }) => {
+    let error;
     if (mode === 'category') {
-      await supabase.from('budget_categories').insert({ name: data.name, amount: Number(data.amount) || 0, color: data.color });
+      ({ error } = await supabase.from('budget_categories').insert({ name: data.name, amount: Number(data.amount) || 0, color: data.color }));
     } else {
-      await supabase.from('budget_monthly').insert({ month: data.month, income: Number(data.income) || 0, expenses: Number(data.expenses) || 0 });
+      ({ error } = await supabase.from('budget_monthly').insert({ month: data.month, income: Number(data.income) || 0, expenses: Number(data.expenses) || 0 }));
     }
-    await fetchBudget();
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Budget mis à jour');
   };
 
   const updateCategory = async (id, amount) => {
-    await supabase.from('budget_categories').update({ amount }).eq('id', id);
-    await fetchBudget();
+    const { error } = await supabase.from('budget_categories').update({ amount }).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Catégorie mise à jour');
   };
 
-  return { budget, loading, addBudgetEntry, updateCategory, refetch: fetchBudget };
+  return { budget, loading, addBudgetEntry, updateCategory, refetch: fetchData };
 }
