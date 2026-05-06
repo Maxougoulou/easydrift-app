@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { THEME, STATUS_CONFIG, PRIORITY_CONFIG } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, PriorityBadge, ProgressBar, Card, Btn, Spinner } from '../components/ui';
