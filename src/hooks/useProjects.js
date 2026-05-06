@@ -30,13 +30,22 @@ export function useProjects() {
 
   useEffect(() => {
     fetchProjects();
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchProjects();
+    });
+
     const channel = supabase
       .channel('projects-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, fetchProjects)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchProjects)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const createProject = async (data) => {

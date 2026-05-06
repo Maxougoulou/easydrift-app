@@ -32,7 +32,7 @@ export function useNotifications(userId) {
   }, [fetchNotifications]);
 
   const markAllRead = async () => {
-    await supabase.from('notifications').update({ read: true }).eq('read', false);
+    await supabase.from('notifications').update({ read: true }).eq('to_member_id', userId).eq('read', false);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 

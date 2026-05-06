@@ -13,6 +13,20 @@ export function useEvents() {
 
   useEffect(() => {
     fetchEvents();
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchEvents();
+    });
+
+    const channel = supabase
+      .channel('events-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, fetchEvents)
+      .subscribe();
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const createEvent = async (data) => {

@@ -22,6 +22,12 @@ const STATUS_CFG = {
   'À venir': { color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
   'Terminé':  { color: '#22C55E', bg: 'rgba(34,197,94,0.15)'  },
   'Annulé':   { color: '#EF4444', bg: 'rgba(239,68,68,0.15)'  },
+  'Clôturé':  { color: '#A855F7', bg: 'rgba(168,85,247,0.15)' },
+};
+
+const displayStatus = (td) => {
+  if (td.status === 'À venir' && td.date < new Date().toISOString().split('T')[0]) return 'Terminé';
+  return td.status;
 };
 
 const fmt  = (n) => `${Number(n ?? 0).toLocaleString('fr-FR')} €`;
@@ -72,7 +78,7 @@ export function TrackDaysModule() {
   const allParts    = trackDays.flatMap(d => d.track_day_participants ?? []);
   const totalRev    = trackDays.reduce((s, d) => s + tdRevenuePaid(d), 0);
   const totalProfit = trackDays.reduce((s, d) => s + tdProfit(d), 0);
-  const upcoming    = trackDays.filter(d => d.status === 'À venir').length;
+  const upcoming    = trackDays.filter(d => displayStatus(d) === 'À venir').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -131,8 +137,11 @@ function TrackDayCard({ td, onClick, onDelete }) {
   const expected = tdRevenueExpected(td);
   const costs    = tdCosts(td);
   const profit   = tdProfit(td);
-  const vhcTotal = parts.reduce((s, p) => s + num(p.vehicules), 0);
-  const sc       = STATUS_CFG[td.status] ?? STATUS_CFG['À venir'];
+  const vhcTotal    = parts.reduce((s, p) => s + num(p.vehicules), 0);
+  const ds          = displayStatus(td);
+  const sc          = STATUS_CFG[ds] ?? STATUS_CFG['À venir'];
+  const urgentCount = parts.filter(p => !p.paid && !p.invoice_ref).length;
+  const pendingCount= parts.filter(p => !p.paid && p.invoice_ref).length;
 
   return (
     <div
@@ -169,7 +178,7 @@ function TrackDayCard({ td, onClick, onDelete }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>{td.name}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: sc.bg, color: sc.color }}>{td.status}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: sc.bg, color: sc.color }}>{ds}</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
             <span style={{ fontSize: 12, color: THEME.text.secondary }}>{td.circuit}</span>
@@ -184,6 +193,16 @@ function TrackDayCard({ td, onClick, onDelete }) {
           <Stat label="Véhicules" value={vhcTotal} color={THEME.text.secondary} />
           <Stat label="Encaissé / Attendu" value={`${fmt(revenue)} / ${fmt(expected)}`} color={THEME.accent.green} small />
           <Stat label="Coûts" value={fmt(costs)} color={costs > 0 ? THEME.accent.red : THEME.text.muted} />
+          {urgentCount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444' }}>⚠ {urgentCount} à facturer</span>
+            </div>
+          )}
+          {urgentCount === 0 && pendingCount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>⏳ {pendingCount} en attente</span>
+            </div>
+          )}
           <div style={{
             padding: '8px 14px', borderRadius: 8, textAlign: 'center',
             background: profit >= 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
@@ -223,9 +242,16 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
   const revenue  = tdRevenuePaid(td);
   const expected = tdRevenueExpected(td);
   const profit   = tdProfit(td);
-  const sc       = STATUS_CFG[td.status] ?? STATUS_CFG['À venir'];
+  const ds       = displayStatus(td);
+  const sc       = STATUS_CFG[ds] ?? STATUS_CFG['À venir'];
 
-  const sorted = [...parts].sort((a, b) => (a.paid === b.paid ? 0 : a.paid ? 1 : -1));
+  const invoicePriority = (p) => {
+    if (!p.paid && !p.invoice_ref) return 0;
+    if (!p.paid && p.invoice_ref) return 1;
+    if (p.paid && !p.facture_envoyee) return 2;
+    return 3;
+  };
+  const sorted = [...parts].sort((a, b) => invoicePriority(a) - invoicePriority(b));
 
   const vhcTotal     = parts.reduce((s, p) => s + num(p.vehicules), 0);
   const anneauxTotal = parts.reduce((s, p) => s + num(p.anneaux), 0);
@@ -238,7 +264,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
         title={td.name}
         subtitle={`${td.circuit} · ${td.date ? new Date(td.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}`}
         actions={<>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: sc.bg, color: sc.color }}>{td.status}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 5, background: sc.bg, color: sc.color }}>{ds}</span>
           <Btn size="sm" onClick={() => setShowEdit(true)}>Modifier</Btn>
         </>}
       />
@@ -299,30 +325,114 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
 
 // ─── TABLEAU PARTICIPANTS ─────────────────────────────────────────────────────
 
-const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 78px 44px 32px';
+const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 44px 90px 44px 32px';
 
 function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant, onEditParticipant }) {
-  const paidCount = parts.filter(p => p.paid).length;
+  const [filter, setFilter] = useState('all');
+
+  // États de facturation
+  const urgent     = parts.filter(p => !p.paid && !p.invoice_ref);
+  const pending    = parts.filter(p => !p.paid && p.invoice_ref);
+  const paidNoAck  = parts.filter(p => p.paid && !p.facture_envoyee);
+  const done       = parts.filter(p => p.paid && p.facture_envoyee);
+
+  const FILTERS = [
+    { id: 'all',      label: 'Tous',             count: parts.length,     color: THEME.text.secondary,  bg: 'rgba(255,255,255,0.06)' },
+    { id: 'urgent',   label: '⚠ À facturer',     count: urgent.length,    color: '#EF4444',             bg: 'rgba(239,68,68,0.12)'   },
+    { id: 'pending',  label: '⏳ En attente',     count: pending.length,   color: '#F59E0B',             bg: 'rgba(245,158,11,0.12)'  },
+    { id: 'paidNoAck',label: '✓ Payé',            count: paidNoAck.length, color: '#22C55E',             bg: 'rgba(34,197,94,0.12)'   },
+    { id: 'done',     label: '✓✓ Clôturé',       count: done.length,      color: '#A855F7',             bg: 'rgba(168,85,247,0.12)'  },
+  ];
+
+  const filtered = filter === 'all' ? parts
+    : filter === 'urgent' ? urgent
+    : filter === 'pending' ? pending
+    : filter === 'paidNoAck' ? paidNoAck
+    : done;
+
+  const exportCSV = () => {
+    const headers = ['Nom', 'Prénom', 'Voiture', 'Téléphone', 'Email', 'Véhicules', 'Pilotes', 'Repas', 'Hôtel', 'Essence', 'DDP (€)', 'Anneaux', 'LOC (€)', 'Transport (€)', 'Total (€)', 'Payé', 'N° Facture', 'Facture envoyée'];
+    const rows = parts.map(p => [
+      p.nom ?? '', p.prenom ?? '',
+      [p.marque, p.modele].filter(Boolean).join(' '),
+      p.tel ?? '', p.email ?? '',
+      num(p.vehicules), num(p.pilotes), num(p.repas), num(p.hotel), num(p.essence),
+      num(p.montant_ddp), num(p.anneaux), num(p.montant_loc), num(p.montant_transport),
+      pTotal(p), p.paid ? 'Oui' : 'Non', p.invoice_ref ?? '', p.facture_envoyee ? 'Oui' : 'Non',
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${td.name.replace(/[^a-z0-9]/gi, '_')}_participants.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+      {/* Barre header */}
       <div style={{ padding: '10px 16px', borderBottom: `1px solid ${THEME.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>
           Participants
-          <span style={{ fontWeight: 400, color: THEME.text.muted, fontSize: 12, marginLeft: 8 }}>
-            {paidCount} payé{paidCount !== 1 ? 's' : ''} · {parts.length - paidCount} en attente
-          </span>
+          <span style={{ fontWeight: 400, color: THEME.text.muted, fontSize: 12, marginLeft: 8 }}>{parts.length} inscrits</span>
         </span>
-        <Btn size="sm" onClick={onAdd}>+ Participant</Btn>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Btn size="sm" variant="secondary" onClick={exportCSV}>⬇ CSV</Btn>
+          <Btn size="sm" onClick={onAdd}>+ Participant</Btn>
+        </div>
       </div>
+
+      {/* Pills de filtre — état facturation */}
+      {parts.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, padding: '8px 16px', borderBottom: `1px solid ${THEME.border}`, flexShrink: 0, overflowX: 'auto' }}>
+          {FILTERS.map(f => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', flexShrink: 0,
+                  background: active ? f.bg : 'rgba(255,255,255,0.04)',
+                  color: active ? f.color : THEME.text.muted,
+                  fontSize: 11, fontWeight: active ? 700 : 500, fontFamily: 'inherit',
+                  outline: active ? `1px solid ${f.color}44` : 'none',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {f.label}
+                <span style={{ background: active ? `${f.color}22` : 'rgba(255,255,255,0.08)', color: active ? f.color : THEME.text.muted, borderRadius: 10, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>{f.count}</span>
+              </button>
+            );
+          })}
+          {/* Alerte globale si des participants à facturer */}
+          {urgent.length > 0 && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#EF4444' }}>
+                {urgent.length} sans facture — {fmt(urgent.reduce((s, p) => s + pTotal(p), 0))} à encaisser
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ flex: 1, overflow: 'auto' }}>
         {parts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 48, color: THEME.text.muted, fontSize: 13 }}>
             Aucun participant. Ajoutez-en un !
           </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 32, color: THEME.text.muted, fontSize: 12 }}>
+            Aucun participant dans cette catégorie.
+          </div>
         ) : (
-          <div style={{ minWidth: 1060 }}>
+          <div style={{ minWidth: 1200 }}>
             {/* Header */}
             <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 4, padding: '6px 16px', position: 'sticky', top: 0, zIndex: 1, background: '#111114', borderBottom: `1px solid ${THEME.border}`, fontSize: 9, color: THEME.text.muted, letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600 }}>
               <span>Nom</span><span>Voiture</span><span>Contact</span>
@@ -336,27 +446,30 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'right' }}>LOC</span>
               <span style={{ textAlign: 'right' }}>Transport</span>
               <span style={{ textAlign: 'right' }}>Total</span>
-              <span>Réf</span>
               <span style={{ textAlign: 'center' }}>Payé</span>
+              <span>N° Fact.</span>
+              <span style={{ textAlign: 'center' }}>Fact.✓</span>
               <span />
             </div>
 
             {/* Rows */}
             <div style={{ display: 'flex', flexDirection: 'column', padding: '4px 16px 8px' }}>
-              {parts.map(p => (
+              {filtered.map(p => (
                 <ParticipantRow
                   key={p.id}
                   participant={p}
                   onTogglePaid={() => updateParticipant(p.id, { paid: !p.paid })}
                   onDelete={() => deleteParticipant(p.id)}
                   onEdit={() => onEditParticipant(p)}
+                  onUpdate={(d) => updateParticipant(p.id, d)}
+                  onToggleFacture={() => updateParticipant(p.id, { facture_envoyee: !p.facture_envoyee })}
                 />
               ))}
             </div>
 
-            {/* Totals */}
+            {/* Totals — toujours sur tous les participants, pas le filtre actif */}
             <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 4, padding: '10px 16px', borderTop: `2px solid ${THEME.border}`, fontSize: 11, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani', background: 'rgba(255,255,255,0.02)' }}>
-              <span style={{ fontSize: 10, color: THEME.text.muted, fontFamily: 'inherit', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', alignSelf: 'center' }}>Totaux</span>
+              <span style={{ fontSize: 10, color: THEME.text.muted, fontFamily: 'inherit', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', alignSelf: 'center' }}>Totaux ({parts.length})</span>
               <span /><span />
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.vehicules), 0)}</span>
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.pilotes), 0)}</span>
@@ -377,7 +490,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_loc), 0))}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_transport), 0))}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.green, fontSize: 13 }}>{fmt(parts.reduce((s, p) => s + pTotal(p), 0))}</span>
-              <span /><span /><span />
+              <span /><span /><span /><span />
             </div>
           </div>
         )}
@@ -386,10 +499,23 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
   );
 }
 
-function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit }) {
+function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpdate, onToggleFacture }) {
   const [hov, setHov] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const total = pTotal(p);
+
+  const rowBg = () => {
+    if (!p.paid && !p.invoice_ref) return hov ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.06)';
+    if (!p.paid && p.invoice_ref)  return hov ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.06)';
+    if (p.paid && p.facture_envoyee) return hov ? 'rgba(168,85,247,0.08)' : 'rgba(168,85,247,0.04)';
+    return hov ? 'rgba(34,197,94,0.07)' : 'rgba(34,197,94,0.03)';
+  };
+  const leftColor = () => {
+    if (!p.paid && !p.invoice_ref) return '#EF4444';
+    if (!p.paid && p.invoice_ref)  return '#F59E0B';
+    if (p.paid && p.facture_envoyee) return '#A855F7';
+    return '#22C55E';
+  };
 
   return (
     <div
@@ -397,11 +523,10 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit }) {
       onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
       style={{
         display: 'grid', gridTemplateColumns: COLS, gap: 4,
-        alignItems: 'center', padding: '7px 0',
+        alignItems: 'center', padding: '7px 0 7px 6px',
         borderBottom: `1px solid ${THEME.border}`,
-        background: p.paid
-          ? 'rgba(34,197,94,0.04)'
-          : hov ? 'rgba(255,255,255,0.025)' : 'transparent',
+        borderLeft: `3px solid ${leftColor()}`,
+        background: rowBg(),
         borderRadius: 4, transition: 'background 0.15s',
       }}
     >
@@ -425,13 +550,20 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit }) {
       <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: p.paid ? THEME.accent.green : total > 0 ? THEME.text.primary : THEME.text.muted, fontFamily: 'Rajdhani' }}>
         {total > 0 ? fmt(total) : '—'}
       </div>
-      <div style={{ fontSize: 10, color: THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.invoice_ref}</div>
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={onTogglePaid}
           title={p.paid ? 'Marquer non payé' : 'Marquer payé'}
           style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
         >{p.paid ? '✓' : ''}</button>
+      </div>
+      <InvoiceRefCell value={p.invoice_ref} onSave={(v) => onUpdate({ invoice_ref: v })} />
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={onToggleFacture}
+          title={p.facture_envoyee ? 'Facture envoyée' : 'Marquer facture envoyée'}
+          style={{ width: 20, height: 20, borderRadius: 5, background: p.facture_envoyee ? THEME.accent.purple : 'transparent', border: `2px solid ${p.facture_envoyee ? THEME.accent.purple : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
+        >{p.facture_envoyee ? '✓' : ''}</button>
       </div>
       <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
         {confirmDelete ? (
@@ -454,6 +586,37 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit }) {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function InvoiceRefCell({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value ?? '');
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onBlur={() => { onSave(val); setEditing(false); }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { onSave(val); setEditing(false); }
+          if (e.key === 'Escape') { setVal(value ?? ''); setEditing(false); }
+        }}
+        style={{ width: '100%', background: THEME.bg.input, border: `1px solid ${THEME.accent.orange}`, borderRadius: 4, padding: '2px 6px', color: THEME.text.primary, fontSize: 10, fontFamily: 'inherit', outline: 'none' }}
+      />
+    );
+  }
+
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      title={val || 'Cliquer pour saisir le numéro de facture'}
+      style={{ fontSize: 10, color: val ? THEME.accent.blue : THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text', padding: '2px 0', minHeight: 18 }}
+    >
+      {val || '—'}
     </div>
   );
 }
@@ -528,6 +691,37 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
             <FinanceLine key={c.key} label={c.label} value={num(td[c.key])} color={THEME.accent.red} />
           ))}
         </FinanceBlock>
+
+        {/* Suivi facturation */}
+        {parts.length > 0 && (() => {
+          const factUrgent  = parts.filter(p => !p.paid && !p.invoice_ref);
+          const factPending = parts.filter(p => !p.paid && p.invoice_ref);
+          const factPaid    = parts.filter(p => p.paid && !p.facture_envoyee);
+          const factDone    = parts.filter(p => p.paid && p.facture_envoyee);
+          const rows = [
+            { label: 'À facturer',        count: factUrgent.length,  amount: factUrgent.reduce((s, p)  => s + pTotal(p), 0), color: '#EF4444' },
+            { label: 'Facturé · en attente', count: factPending.length, amount: factPending.reduce((s, p) => s + pTotal(p), 0), color: '#F59E0B' },
+            { label: 'Payé · sans accusé', count: factPaid.length,   amount: factPaid.reduce((s, p)   => s + pTotal(p), 0), color: '#22C55E' },
+            { label: 'Clôturé',           count: factDone.length,    amount: factDone.reduce((s, p)   => s + pTotal(p), 0), color: '#A855F7' },
+          ];
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Suivi facturation</div>
+              {rows.map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${THEME.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: r.count > 0 ? THEME.text.secondary : THEME.text.muted }}>{r.label}</span>
+                    {r.count > 0 && <span style={{ fontSize: 10, color: r.color, fontWeight: 700, background: `${r.color}18`, borderRadius: 8, padding: '0 5px' }}>{r.count}</span>}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: r.count > 0 ? 700 : 400, color: r.count > 0 ? r.color : THEME.text.muted, fontFamily: 'Rajdhani' }}>
+                    {r.count > 0 ? fmt(r.amount) : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Taux de remplissage */}
         {(td.max_participants > 0) && parts.length > 0 && (
@@ -620,7 +814,7 @@ function TrackDayForm({ td, onSubmit, onClose }) {
           <div>
             <label style={lbl}>Statut</label>
             <select value={form.status} onChange={e => set('status', e.target.value)} style={inp}>
-              {['À venir', 'Terminé', 'Annulé'].map(s => <option key={s}>{s}</option>)}
+              {['À venir', 'Terminé', 'Clôturé', 'Annulé'].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
@@ -723,6 +917,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
     montant_loc: participant?.montant_loc ?? num(td?.prix_loc ?? 0),
     montant_transport: participant?.montant_transport ?? num(td?.prix_transport ?? 0),
     invoice_ref: participant?.invoice_ref ?? '',
+    facture_envoyee: participant?.facture_envoyee ?? false,
     paid: participant?.paid ?? false,
     notes: participant?.notes ?? '',
   });
@@ -975,12 +1170,21 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
             <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: THEME.accent.orange, fontFamily: 'Rajdhani' }}>{fmt(total)}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              onClick={() => set('paid', !form.paid)}
-              style={{ width: 22, height: 22, borderRadius: 5, background: form.paid ? THEME.accent.green : 'transparent', border: `2px solid ${form.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', transition: 'all 0.15s' }}
-            >{form.paid ? '✓' : ''}</button>
-            <span style={{ fontSize: 13, color: THEME.text.secondary }}>Paiement encaissé</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => set('paid', !form.paid)}
+                style={{ width: 22, height: 22, borderRadius: 5, background: form.paid ? THEME.accent.green : 'transparent', border: `2px solid ${form.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', transition: 'all 0.15s' }}
+              >{form.paid ? '✓' : ''}</button>
+              <span style={{ fontSize: 13, color: THEME.text.secondary }}>Paiement encaissé</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => set('facture_envoyee', !form.facture_envoyee)}
+                style={{ width: 22, height: 22, borderRadius: 5, background: form.facture_envoyee ? THEME.accent.purple : 'transparent', border: `2px solid ${form.facture_envoyee ? THEME.accent.purple : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', transition: 'all 0.15s' }}
+              >{form.facture_envoyee ? '✓' : ''}</button>
+              <span style={{ fontSize: 13, color: THEME.text.secondary }}>Facture envoyée</span>
+            </div>
           </div>
         </div>
 

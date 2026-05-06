@@ -5,7 +5,7 @@ export function useTeam() {
   const [team, setTeam] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchTeam = () => {
     supabase
       .from('team_members')
       .select('*')
@@ -14,6 +14,16 @@ export function useTeam() {
         if (data) setTeam(data);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchTeam();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchTeam();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return { team, loading };

@@ -14,7 +14,24 @@ export function useBudget() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchBudget(); }, []);
+  useEffect(() => {
+    fetchBudget();
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchBudget();
+    });
+
+    const channel = supabase
+      .channel('budget-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_monthly' }, fetchBudget)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_categories' }, fetchBudget)
+      .subscribe();
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const addBudgetEntry = async ({ mode, ...data }) => {
     if (mode === 'category') {

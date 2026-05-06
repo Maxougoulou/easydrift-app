@@ -16,11 +16,20 @@ export function useTrackDays() {
 
   useEffect(() => {
     fetch();
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetch();
+    });
+
     const channel = supabase.channel('track-days-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'track_days' }, fetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'track_day_participants' }, fetch)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const createTrackDay = async (data) => {
@@ -45,6 +54,17 @@ export function useTrackDays() {
 
   const updateParticipant = async (id, data) => {
     await supabase.from('track_day_participants').update(data).eq('id', id);
+
+    if (data.paid === true) {
+      const td = trackDays.find(d => d.track_day_participants?.some(p => p.id === id));
+      if (td && td.status !== 'Clôturé' && td.status !== 'Annulé') {
+        const updated = td.track_day_participants.map(p => p.id === id ? { ...p, paid: true } : p);
+        if (updated.length > 0 && updated.every(p => p.paid)) {
+          await supabase.from('track_days').update({ status: 'Clôturé' }).eq('id', td.id);
+        }
+      }
+    }
+
     await fetch();
   };
 

@@ -26,12 +26,21 @@ export function useVehicles() {
 
   useEffect(() => {
     fetchVehicles();
+
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') fetchVehicles();
+    });
+
     const channel = supabase
       .channel('vehicles-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, fetchVehicles)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, fetchVehicles)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+
+    return () => {
+      authSub.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const createVehicle = async (data) => {
