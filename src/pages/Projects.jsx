@@ -424,7 +424,7 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
   const PRIORITIES = ['Haute', 'Moyenne', 'Basse'];
 
   // ── Panneau gauche : titre + contenu ──────────────────────────────────────
-  const MainContent = () => (
+  const mainContent = (
     <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '24px 18px' : '40px 52px', minWidth: 0 }}>
 
       {/* Grand titre */}
@@ -494,7 +494,7 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
   );
 
   // ── Panneau droit : propriétés + discussion ────────────────────────────────
-  const SidePanel = () => (
+  const sidePanel = (
     <div style={{ width: isMobile ? '100%' : 300, flexShrink: 0, borderLeft: isMobile ? 'none' : `1px solid ${THEME.border}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Propriétés */}
@@ -622,8 +622,8 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
       {/* Corps */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {isMobile
-          ? mobileTab === 'main' ? <MainContent /> : <SidePanel />
-          : <><MainContent /><SidePanel /></>
+          ? mobileTab === 'main' ? mainContent : sidePanel
+          : <>{mainContent}{sidePanel}</>
         }
       </div>
 
