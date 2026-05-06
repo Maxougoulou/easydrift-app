@@ -327,7 +327,7 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
 
 // ─── TABLEAU PARTICIPANTS ─────────────────────────────────────────────────────
 
-const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 90px 44px 44px 48px 32px';
+const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 72px 95px 90px 44px 44px 48px 32px';
 
 function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant, onEditParticipant, uploadParticipantInvoice }) {
   const [filter, setFilter] = useState('all');
@@ -448,6 +448,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'center' }}>Ann</span>
               <span style={{ textAlign: 'right' }}>LOC</span>
               <span style={{ textAlign: 'right' }}>Transport</span>
+              <span style={{ textAlign: 'right' }}>Autre</span>
               <span style={{ textAlign: 'right' }}>Total</span>
               <span>N° Fact.</span>
               <span style={{ textAlign: 'center' }}>Fact. env.</span>
@@ -494,6 +495,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'center' }}>{parts.reduce((s, p) => s + num(p.anneaux), 0)}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_loc), 0))}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_transport), 0))}</span>
+              <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{parts.some(p => num(p.montant_autre) > 0) ? fmt(parts.reduce((s, p) => s + num(p.montant_autre), 0)) : '—'}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.green, fontSize: 13 }}>{fmt(parts.reduce((s, p) => s + pTotal(p), 0))}</span>
               <span /><span /><span /><span /><span />
             </div>
@@ -552,6 +554,7 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpda
       <Cell center active={num(p.anneaux) > 0} color={THEME.accent.purple}>{num(p.anneaux) || '—'}</Cell>
       <Cell right active={num(p.montant_loc) > 0}>{num(p.montant_loc) > 0 ? fmt(p.montant_loc) : '—'}</Cell>
       <Cell right active={num(p.montant_transport) > 0}>{num(p.montant_transport) > 0 ? fmt(p.montant_transport) : '—'}</Cell>
+      <Cell right active={num(p.montant_autre) > 0}>{num(p.montant_autre) > 0 ? fmt(p.montant_autre) : '—'}</Cell>
       <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: p.paid ? THEME.accent.green : total > 0 ? THEME.text.primary : THEME.text.muted, fontFamily: 'Rajdhani' }}>
         {total > 0 ? fmt(total) : '—'}
       </div>
