@@ -45,7 +45,7 @@ export function TrackDaysModule() {
   const {
     trackDays, loading,
     createTrackDay, updateTrackDay, deleteTrackDay,
-    addParticipant, updateParticipant, deleteParticipant,
+    addParticipant, updateParticipant, deleteParticipant, uploadParticipantInvoice,
   } = useTrackDays();
   const { clients, createClient, updateClient, deleteClient } = useClients();
   const [selected, setSelected] = useState(null);
@@ -69,6 +69,7 @@ export function TrackDaysModule() {
         addParticipant={addParticipant}
         updateParticipant={updateParticipant}
         deleteParticipant={deleteParticipant}
+        uploadParticipantInvoice={uploadParticipantInvoice}
         clients={clients}
         createClient={createClient}
       />
@@ -230,7 +231,7 @@ function Stat({ label, value, color, small }) {
 
 // ─── DÉTAIL ───────────────────────────────────────────────────────────────────
 
-function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updateParticipant, deleteParticipant, clients = [], createClient }) {
+function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updateParticipant, deleteParticipant, uploadParticipantInvoice, clients = [], createClient }) {
   const { isMobile } = useAppContext();
   const [showEdit, setShowEdit] = useState(false);
   const [showAddPart, setShowAddPart] = useState(false);
@@ -306,11 +307,11 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         {isMobile ? (
           mobileTab === 'participants'
-            ? <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} />
+            ? <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} uploadParticipantInvoice={uploadParticipantInvoice} />
             : <FinancesSection td={td} parts={parts} profit={profit} revenue={revenue} expected={expected} costs={costs} onEdit={() => setShowEdit(true)} isMobile />
         ) : (
           <>
-            <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} />
+            <ParticipantsSection parts={sorted} td={td} onAdd={() => setShowAddPart(true)} updateParticipant={updateParticipant} deleteParticipant={deleteParticipant} onEditParticipant={setEditParticipant} uploadParticipantInvoice={uploadParticipantInvoice} />
             <FinancesSection td={td} parts={parts} profit={profit} revenue={revenue} expected={expected} costs={costs} onEdit={() => setShowEdit(true)} />
           </>
         )}
@@ -325,9 +326,9 @@ function TrackDayDetail({ td, onBack, updateTrackDay, addParticipant, updatePart
 
 // ─── TABLEAU PARTICIPANTS ─────────────────────────────────────────────────────
 
-const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 44px 90px 44px 32px';
+const COLS = '150px 110px 130px 48px 42px 42px 42px 42px 88px 48px 88px 95px 95px 90px 44px 44px 48px 32px';
 
-function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant, onEditParticipant }) {
+function ParticipantsSection({ parts, td, onAdd, updateParticipant, deleteParticipant, onEditParticipant, uploadParticipantInvoice }) {
   const [filter, setFilter] = useState('all');
 
   // États de facturation
@@ -351,14 +352,14 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
     : done;
 
   const exportCSV = () => {
-    const headers = ['Nom', 'Prénom', 'Voiture', 'Téléphone', 'Email', 'Véhicules', 'Pilotes', 'Repas', 'Hôtel', 'Essence', 'DDP (€)', 'Anneaux', 'LOC (€)', 'Transport (€)', 'Total (€)', 'Payé', 'N° Facture', 'Facture envoyée'];
+    const headers = ['Nom', 'Prénom', 'Voiture', 'Téléphone', 'Email', 'Véhicules', 'Pilotes', 'Repas', 'Hôtel', 'Essence', 'DDP (€)', 'Anneaux', 'LOC (€)', 'Transport (€)', 'Total (€)', 'N° Facture', 'Facture envoyée', 'Facture payée', 'PDF'];
     const rows = parts.map(p => [
       p.nom ?? '', p.prenom ?? '',
       [p.marque, p.modele].filter(Boolean).join(' '),
       p.tel ?? '', p.email ?? '',
       num(p.vehicules), num(p.pilotes), num(p.repas), num(p.hotel), num(p.essence),
       num(p.montant_ddp), num(p.anneaux), num(p.montant_loc), num(p.montant_transport),
-      pTotal(p), p.paid ? 'Oui' : 'Non', p.invoice_ref ?? '', p.facture_envoyee ? 'Oui' : 'Non',
+      pTotal(p), p.invoice_ref ?? '', p.facture_envoyee ? 'Oui' : 'Non', p.paid ? 'Oui' : 'Non', p.invoice_url ?? '',
     ]);
     const csv = [headers, ...rows]
       .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))
@@ -446,9 +447,10 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'right' }}>LOC</span>
               <span style={{ textAlign: 'right' }}>Transport</span>
               <span style={{ textAlign: 'right' }}>Total</span>
-              <span style={{ textAlign: 'center' }}>Payé</span>
               <span>N° Fact.</span>
-              <span style={{ textAlign: 'center' }}>Fact.✓</span>
+              <span style={{ textAlign: 'center' }}>Fact. env.</span>
+              <span style={{ textAlign: 'center' }}>Fact. payée</span>
+              <span style={{ textAlign: 'center' }}>PDF</span>
               <span />
             </div>
 
@@ -463,6 +465,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
                   onEdit={() => onEditParticipant(p)}
                   onUpdate={(d) => updateParticipant(p.id, d)}
                   onToggleFacture={() => updateParticipant(p.id, { facture_envoyee: !p.facture_envoyee })}
+                  onUploadInvoice={(file) => uploadParticipantInvoice(p.id, file)}
                 />
               ))}
             </div>
@@ -490,7 +493,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_loc), 0))}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.orange }}>{fmt(parts.reduce((s, p) => s + num(p.montant_transport), 0))}</span>
               <span style={{ textAlign: 'right', color: THEME.accent.green, fontSize: 13 }}>{fmt(parts.reduce((s, p) => s + pTotal(p), 0))}</span>
-              <span /><span /><span /><span />
+              <span /><span /><span /><span /><span />
             </div>
           </div>
         )}
@@ -499,7 +502,7 @@ function ParticipantsSection({ parts, td, onAdd, updateParticipant, deletePartic
   );
 }
 
-function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpdate, onToggleFacture }) {
+function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpdate, onToggleFacture, onUploadInvoice }) {
   const [hov, setHov] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const total = pTotal(p);
@@ -550,13 +553,6 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpda
       <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, color: p.paid ? THEME.accent.green : total > 0 ? THEME.text.primary : THEME.text.muted, fontFamily: 'Rajdhani' }}>
         {total > 0 ? fmt(total) : '—'}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <button
-          onClick={onTogglePaid}
-          title={p.paid ? 'Marquer non payé' : 'Marquer payé'}
-          style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
-        >{p.paid ? '✓' : ''}</button>
-      </div>
       <InvoiceRefCell value={p.invoice_ref} onSave={(v) => onUpdate({ invoice_ref: v })} />
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <button
@@ -565,6 +561,14 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpda
           style={{ width: 20, height: 20, borderRadius: 5, background: p.facture_envoyee ? THEME.accent.purple : 'transparent', border: `2px solid ${p.facture_envoyee ? THEME.accent.purple : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
         >{p.facture_envoyee ? '✓' : ''}</button>
       </div>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={onTogglePaid}
+          title={p.paid ? 'Marquer non payé' : 'Facture payée'}
+          style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
+        >{p.paid ? '✓' : ''}</button>
+      </div>
+      <PdfCell invoiceUrl={p.invoice_url} onUpload={onUploadInvoice} />
       <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
         {confirmDelete ? (
           <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 4, padding: '2px 6px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
@@ -617,6 +621,45 @@ function InvoiceRefCell({ value, onSave }) {
       style={{ fontSize: 10, color: val ? THEME.accent.blue : THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text', padding: '2px 0', minHeight: 18 }}
     >
       {val || '—'}
+    </div>
+  );
+}
+
+function PdfCell({ invoiceUrl, onUpload }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try { await onUpload(file); } finally { setUploading(false); e.target.value = ''; }
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+      <input ref={inputRef} type="file" accept="application/pdf,application/msword,image/*" style={{ display: 'none' }} onChange={handleFile} />
+      {invoiceUrl ? (
+        <>
+          <a
+            href={invoiceUrl} target="_blank" rel="noreferrer"
+            title="Télécharger la facture"
+            onClick={e => e.stopPropagation()}
+            style={{ width: 20, height: 20, borderRadius: 4, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', fontSize: 11, textDecoration: 'none', flexShrink: 0 }}
+          >⬇</a>
+          <button
+            onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
+            title="Remplacer la facture"
+            style={{ width: 20, height: 20, borderRadius: 4, background: 'rgba(255,255,255,0.07)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.text.muted, fontSize: 10, cursor: 'pointer', flexShrink: 0 }}
+          >{uploading ? '…' : '↑'}</button>
+        </>
+      ) : (
+        <button
+          onClick={e => { e.stopPropagation(); inputRef.current?.click(); }}
+          title="Déposer la facture PDF"
+          style={{ width: 20, height: 20, borderRadius: 4, background: 'rgba(240,120,20,0.1)', border: `1px dashed rgba(240,120,20,0.35)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: THEME.accent.orange, fontSize: 10, cursor: 'pointer', flexShrink: 0 }}
+        >{uploading ? '…' : '📎'}</button>
+      )}
     </div>
   );
 }
@@ -1176,7 +1219,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
                 onClick={() => set('paid', !form.paid)}
                 style={{ width: 22, height: 22, borderRadius: 5, background: form.paid ? THEME.accent.green : 'transparent', border: `2px solid ${form.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', transition: 'all 0.15s' }}
               >{form.paid ? '✓' : ''}</button>
-              <span style={{ fontSize: 13, color: THEME.text.secondary }}>Paiement encaissé</span>
+              <span style={{ fontSize: 13, color: THEME.text.secondary }}>Facture payée</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button

@@ -73,5 +73,15 @@ export function useTrackDays() {
     await fetch();
   };
 
-  return { trackDays, loading, createTrackDay, updateTrackDay, deleteTrackDay, addParticipant, updateParticipant, deleteParticipant };
+  const uploadParticipantInvoice = async (participantId, file) => {
+    const ext = file.name.split('.').pop();
+    const path = `${participantId}/invoice.${ext}`;
+    const { error } = await supabase.storage.from('track-day-invoices').upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('track-day-invoices').getPublicUrl(path);
+    await supabase.from('track_day_participants').update({ invoice_url: publicUrl }).eq('id', participantId);
+    await fetch();
+  };
+
+  return { trackDays, loading, createTrackDay, updateTrackDay, deleteTrackDay, addParticipant, updateParticipant, deleteParticipant, uploadParticipantInvoice };
 }
