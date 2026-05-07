@@ -321,7 +321,19 @@ export function SetupConfiguratorModule() {
                       <span style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Anneau recommandé</span>
                     </div>
                     <div style={{ padding: '20px' }}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', marginBottom: 4 }}>{result.ring.ref}</div>
+                      <div style={{ fontSize: 28, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', marginBottom: 6 }}>{result.ring.ref}</div>
+                      {(() => {
+                        const isIdeal = result.twd && result.ring.outerDiameter >= (result.twd - 20);
+                        const color = isIdeal ? THEME.accent.green : THEME.accent.orange;
+                        return (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '4px 12px', borderRadius: 20, background: `${color}18`, border: `1px solid ${color}44` }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                              {isIdeal ? 'Setup Idéal' : 'Fonctionnel · Pas optimal'}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 16 }}>Ø ext. {result.ring.outerDiameter} mm · Ø int. {result.ring.innerDiameter} mm · Largeur {result.ring.width} mm</div>
                       <div style={{ fontSize: 12, color: THEME.text.secondary, lineHeight: 1.7, padding: '10px 14px', background: 'rgba(34,197,94,0.06)', borderRadius: 8, borderLeft: `3px solid ${THEME.accent.green}55` }}>
                         Cet anneau s'insère dans votre passage de roue avec {Math.round(result.mas - result.ring.outerDiameter)} mm de marge.
@@ -412,6 +424,25 @@ export function SetupConfiguratorModule() {
 
           </div>
         )}
+
+        {/* ── Glossaire ── */}
+        <div style={{ marginTop: 32, padding: '16px 20px', borderRadius: 12, background: THEME.bg.card, border: `1px solid ${THEME.border}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Glossaire</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { term: 'TWD', def: 'Theoretical Wheel Diameter — Diamètre extérieur théorique du pneumatique d\'origine monté et gonflé.' },
+              { term: 'MAS', def: 'Maximum Available Space — Espace maximum disponible dans le passage de roue (TWD + 20 mm de tolérance).' },
+              { term: 'Setup Idéal', color: THEME.accent.green, def: 'Le diamètre extérieur de l\'anneau est ≥ TWD − 20 mm : l\'anneau occupe au mieux l\'espace disponible.' },
+              { term: 'Fonctionnel · Pas optimal', color: THEME.accent.orange, def: 'Le diamètre extérieur de l\'anneau est < TWD − 20 mm : le setup fonctionne mais l\'anneau est sous-dimensionné par rapport au passage de roue.' },
+            ].map(({ term, def, color }) => (
+              <div key={term} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: color ?? THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 180, flexShrink: 0 }}>{term}</span>
+                <span style={{ fontSize: 11, color: THEME.text.muted, lineHeight: 1.6 }}>{def}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );
