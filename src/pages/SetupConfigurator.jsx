@@ -41,33 +41,6 @@ const RINGS = [
     ],
   },
   {
-    ref: 'RS64 230×640',
-    outerDiameter: 640,
-    width: 230,
-    tires: [
-      { w: 205, a: 60, r: 16, brand: null,    type: null,         d: 652.4 },
-      { w: 225, a: 55, r: 16, brand: null,    type: null,         d: 653.9 },
-      { w: 245, a: 50, r: 16, brand: null,    type: null,         d: 651.4 },
-      { w: 275, a: 45, r: 16, brand: null,    type: null,         d: 653.9 },
-      { w: 205, a: 55, r: 17, brand: null,    type: null,         d: 657.3 },
-      { w: 225, a: 50, r: 17, brand: null,    type: null,         d: 656.8 },
-      { w: 245, a: 45, r: 17, brand: null,    type: null,         d: 652.3 },
-      { w: 225, a: 45, r: 18, brand: null,    type: null,         d: 659.7 },
-      { w: 245, a: 40, r: 18, brand: 'ZETA',  type: 'ZTR 10 97W XL', d: 653.2 },
-      { w: 245, a: 40, r: 18, brand: 'RAPID', type: 'P609 97W',   d: 653.2 },
-      { w: 285, a: 35, r: 18, brand: null,    type: null,         d: 656.7 },
-      { w: 215, a: 40, r: 19, brand: null,    type: null,         d: 654.6 },
-      { w: 245, a: 35, r: 19, brand: 'RAPID', type: 'P609 93W',   d: 654.1 },
-      { w: 245, a: 35, r: 19, brand: 'AOTELI',type: 'P609 93W',   d: 654.1 },
-      { w: 245, a: 35, r: 19, brand: 'NANKANG',type: 'NS20',      d: 654.1 },
-      { w: 285, a: 30, r: 19, brand: null,    type: null,         d: 653.6 },
-      { w: 205, a: 35, r: 20, brand: null,    type: null,         d: 651.5 },
-      { w: 215, a: 35, r: 20, brand: null,    type: null,         d: 658.5 },
-      { w: 245, a: 30, r: 20, brand: null,    type: null,         d: 655.0 },
-      { w: 245, a: 25, r: 21, brand: null,    type: null,         d: 655.9 },
-    ],
-  },
-  {
     ref: 'DTS 200×600',
     outerDiameter: 600,
     width: 200,
@@ -135,12 +108,11 @@ function calcTWD(width, aspect, rim) {
   return rim * 25.4 + 2 * (width * aspect / 100);
 }
 
-function findBestRing(twd) {
-  const mas = twd + 20;
+function findBestRing(mas) {
   const compatible = RINGS.filter(r => r.outerDiameter <= mas);
   if (!compatible.length) return null;
   compatible.sort((a, b) => b.outerDiameter - a.outerDiameter);
-  return { ring: compatible[0], mas, alternatives: compatible.slice(1) };
+  return { ring: compatible[0], alternatives: compatible.slice(1) };
 }
 
 function sortedTires(ring) {
@@ -157,22 +129,43 @@ function sortedTires(ring) {
 
 export function SetupConfiguratorModule() {
   const { isMobile } = useAppContext();
-  const [form, setForm] = useState({ marque: '', modele: '', annee: '', width: '', aspect: '', rim: '' });
+  const [mode, setMode] = useState('tire'); // 'tire' | 'measure'
+  const [form, setForm] = useState({ marque: '', modele: '', annee: '', width: '', aspect: '', rim: '', masDirecte: '' });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const calculate = () => {
-    const w = parseInt(form.width), a = parseInt(form.aspect), r = parseInt(form.rim);
-    if (!w || !a || !r || w < 100 || w > 400 || a < 20 || a > 100 || r < 10 || r > 24) {
-      setError('Taille de pneu invalide. Format attendu : ex. 225 / 45 / 18');
-      return;
+    let mas, twd = null;
+
+    if (mode === 'tire') {
+      const w = parseInt(form.width), a = parseInt(form.aspect), r = parseInt(form.rim);
+      if (!w || !a || !r || w < 100 || w > 400 || a < 20 || a > 100 || r < 10 || r > 24) {
+        setError('Taille de pneu invalide. Format attendu : ex. 225 / 45 / 18');
+        return;
+      }
+      twd = calcTWD(w, a, r);
+      mas = twd + 20;
+    } else {
+      const m = parseFloat(form.masDirecte);
+      if (!m || m < 300 || m > 900) {
+        setError('Diamètre invalide. Saisissez la mesure en mm (ex. 660).');
+        return;
+      }
+      mas = m;
     }
+
     setError('');
-    const twd = calcTWD(w, a, r);
-    const res = findBestRing(twd);
-    setResult({ twd: Math.round(twd * 10) / 10, ...res, input: { w, a, r } });
+    const res = findBestRing(mas);
+    const w = parseInt(form.width), a = parseInt(form.aspect), r = parseInt(form.rim);
+    setResult({
+      twd: twd ? Math.round(twd * 10) / 10 : null,
+      mas: Math.round(mas * 10) / 10,
+      mode,
+      ...res,
+      input: mode === 'tire' ? { w, a, r } : null,
+    });
   };
 
   const reset = () => { setResult(null); setError(''); };
