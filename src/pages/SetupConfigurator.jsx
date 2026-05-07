@@ -310,6 +310,8 @@ export function SetupConfiguratorModule() {
               const topTires = tires.slice(0, 6);
               const nankangTires = tires.filter(t => t.brand?.toUpperCase() === 'NANKANG');
               const bestNankang = nankangTires[0];
+              const isIdeal = result.twd && result.ring.outerDiameter >= (result.twd - 20);
+              const setupColor = isIdeal ? THEME.accent.green : THEME.accent.orange;
 
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, alignItems: 'start' }}>
@@ -321,19 +323,7 @@ export function SetupConfiguratorModule() {
                       <span style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Anneau recommandé</span>
                     </div>
                     <div style={{ padding: '20px' }}>
-                      <div style={{ fontSize: 28, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', marginBottom: 6 }}>{result.ring.ref}</div>
-                      {(() => {
-                        const isIdeal = result.twd && result.ring.outerDiameter >= (result.twd - 20);
-                        const color = isIdeal ? THEME.accent.green : THEME.accent.orange;
-                        return (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: '4px 12px', borderRadius: 20, background: `${color}18`, border: `1px solid ${color}44` }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                              {isIdeal ? 'Setup Idéal' : 'Fonctionnel · Pas optimal'}
-                            </span>
-                          </div>
-                        );
-                      })()}
+                      <div style={{ fontSize: 28, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', marginBottom: 4 }}>{result.ring.ref}</div>
                       <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 16 }}>Ø ext. {result.ring.outerDiameter} mm · Ø int. {result.ring.innerDiameter} mm · Largeur {result.ring.width} mm</div>
                       <div style={{ fontSize: 12, color: THEME.text.secondary, lineHeight: 1.7, padding: '10px 14px', background: 'rgba(34,197,94,0.06)', borderRadius: 8, borderLeft: `3px solid ${THEME.accent.green}55` }}>
                         Cet anneau s'insère dans votre passage de roue avec {Math.round(result.mas - result.ring.outerDiameter)} mm de marge.
@@ -353,20 +343,23 @@ export function SetupConfiguratorModule() {
                   </div>
 
                   {/* ── Étape 2 : Pneu support ── */}
-                  <div style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 12, overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${THEME.border}`, background: `${THEME.accent.orange}0A`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: THEME.accent.orange, color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Pneu support</span>
+                  <div style={{ background: THEME.bg.card, border: `1px solid ${setupColor}44`, borderRadius: 12, overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${THEME.border}`, background: `${setupColor}0A`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: setupColor, color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', flex: 1 }}>Pneu support</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: setupColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {isIdeal ? 'Setup Idéal' : 'Fonctionnel · Pas optimal'}
+                      </span>
                     </div>
                     <div style={{ padding: '16px 20px' }}>
                       {/* Top pick Nankang */}
                       {bestNankang && (
-                        <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 10, background: `${THEME.accent.orange}12`, border: `1px solid ${THEME.accent.orange}44` }}>
+                        <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 10, background: `${setupColor}12`, border: `1px solid ${setupColor}44` }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: THEME.accent.orange, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Recommandé</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: setupColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⭐ Recommandé</span>
                             <span style={{ fontSize: 10, color: THEME.text.muted }}>Ø {bestNankang.d} mm</span>
                           </div>
-                          <div style={{ fontSize: 18, fontWeight: 900, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif' }}>
+                          <div style={{ fontSize: 18, fontWeight: 900, color: setupColor, fontFamily: 'Rajdhani, sans-serif' }}>
                             {bestNankang.w}/{bestNankang.a}/{bestNankang.r}
                           </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: THEME.text.primary, marginTop: 2 }}>NANKANG {bestNankang.type}</div>
