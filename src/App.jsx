@@ -18,10 +18,11 @@ import { ProjectsModule } from './pages/Projects';
 import { VehiclesModule } from './pages/Vehicles';
 import { CalendarModule, BudgetModule, MessagesModule, GalleryModule } from './pages/Modules';
 import { TrackDaysModule } from './pages/TrackDays';
+import { SetupConfiguratorModule } from './pages/SetupConfigurator';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
-const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'vehicles', 'calendar'];
+const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'configurator', 'vehicles', 'calendar'];
 
 function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
   const [showMore, setShowMore] = useState(false);
@@ -172,8 +173,9 @@ export default function App() {
     switch (section) {
       case 'dashboard': return <DashboardModule />;
       case 'projects':   return <ProjectsModule />;
-      case 'trackdays':  return <TrackDaysModule />;
-      case 'vehicles':   return <VehiclesModule />;
+      case 'trackdays':     return <TrackDaysModule />;
+      case 'configurator':  return <SetupConfiguratorModule />;
+      case 'vehicles':      return <VehiclesModule />;
       case 'calendar': return <CalendarModule />;
       case 'budget': return <BudgetModule />;
       case 'messages': return <MessagesModule />;
