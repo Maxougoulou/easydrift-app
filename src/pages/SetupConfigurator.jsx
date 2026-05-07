@@ -147,7 +147,7 @@ export function SetupConfiguratorModule() {
         return;
       }
       twd = calcTWD(w, a, r);
-      mas = twd + 10;
+      mas = twd + 5;
     } else {
       const m = parseFloat(form.masDirecte);
       if (!m || m < 300 || m > 900) {
@@ -281,7 +281,7 @@ export function SetupConfiguratorModule() {
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 10, marginBottom: 28 }}>
               {[
                 { label: 'Diamètre origine (TWD)', value: `${result.twd} mm`, color: THEME.text.primary },
-                { label: 'Espace max. dispo (MAS)', value: `${Math.round((result.twd + 10) * 10) / 10} mm`, color: THEME.accent.orange, note: 'TWD + 10 mm' },
+                { label: 'Espace max. dispo (MAS)', value: `${Math.round((result.twd + 5) * 10) / 10} mm`, color: THEME.accent.orange, note: 'TWD + 5 mm' },
                 { label: 'Anneau retenu', value: result.ring ? result.ring.ref : '—', color: result.ring ? THEME.accent.green : THEME.accent.red },
                 { label: 'Diamètre ext. anneau', value: result.ring ? `${result.ring.outerDiameter} mm` : '—', color: result.ring ? THEME.accent.green : THEME.accent.red, note: result.ring ? `≤ ${Math.round(result.mas)} mm ✓` : 'Hors gamme' },
               ].map(s => (
