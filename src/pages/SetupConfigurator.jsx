@@ -310,7 +310,7 @@ export function SetupConfiguratorModule() {
               const topTires = tires.slice(0, 6);
               const nankangTires = tires.filter(t => t.brand?.toUpperCase() === 'NANKANG');
               const bestNankang = nankangTires[0];
-              const isIdeal = result.twd && result.ring.outerDiameter >= (result.twd - 20);
+              const isIdeal = result.twd && result.ring.outerDiameter >= (result.twd - 10);
               const setupColor = isIdeal ? THEME.accent.green : THEME.accent.orange;
 
               return (
@@ -425,8 +425,8 @@ export function SetupConfiguratorModule() {
             {[
               { term: 'TWD', def: 'Theoretical Wheel Diameter — Diamètre extérieur théorique du pneumatique d\'origine monté et gonflé.' },
               { term: 'MAS', def: 'Maximum Available Space — Espace maximum disponible dans le passage de roue (TWD + 20 mm de tolérance).' },
-              { term: 'Setup Idéal', color: THEME.accent.green, def: 'Le diamètre extérieur de l\'anneau est ≥ TWD − 20 mm : l\'anneau occupe au mieux l\'espace disponible.' },
-              { term: 'Fonctionnel · Pas optimal', color: THEME.accent.orange, def: 'Le diamètre extérieur de l\'anneau est < TWD − 20 mm : le setup fonctionne mais l\'anneau est sous-dimensionné par rapport au passage de roue.' },
+              { term: 'Setup Idéal', color: THEME.accent.green, def: 'Le diamètre extérieur de l\'anneau est ≥ TWD − 10 mm : l\'anneau occupe au mieux l\'espace disponible.' },
+              { term: 'Fonctionnel · Pas optimal', color: THEME.accent.orange, def: 'Le diamètre extérieur de l\'anneau est < TWD − 10 mm : le setup fonctionne mais l\'anneau est sous-dimensionné par rapport au passage de roue.' },
             ].map(({ term, def, color }) => (
               <div key={term} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: color ?? THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 180, flexShrink: 0 }}>{term}</span>
