@@ -146,7 +146,10 @@ export function useProjectAttachments(projectId) {
   const upload = async (file, uploadedBy) => {
     setUploading(true);
     try {
-      const path = `${projectId}/${Date.now()}-${file.name}`;
+      const safeName = file.name
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${projectId}/${Date.now()}-${safeName}`;
       const { error: storageError } = await supabase.storage.from('project-attachments').upload(path, file);
       if (storageError) {
         console.error('[upload] storage error:', storageError);
