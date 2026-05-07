@@ -9,7 +9,8 @@ import { useAppContext } from '../lib/AppContext';
 const RINGS = [
   {
     ref: 'DTS 230×660',
-    outerDiameter: 660,
+    outerDiameter: 692,
+    innerDiameter: 660,
     width: 230,
     tires: [
       { w: 175, a: 75, r: 16, brand: null,       type: null,                      d: 668.9 },
@@ -42,7 +43,8 @@ const RINGS = [
   },
   {
     ref: 'DTS 200×600',
-    outerDiameter: 600,
+    outerDiameter: 640,
+    innerDiameter: 600,
     width: 200,
     tires: [
       { w: 185, a: 60, r: 15, brand: 'CONTINENTAL', type: 'ContiPremiumContact 2 88H', d: 603.0 },
@@ -72,7 +74,8 @@ const RINGS = [
   },
   {
     ref: 'DTS 180×560',
-    outerDiameter: 560,
+    outerDiameter: 590,
+    innerDiameter: 560,
     width: 180,
     tires: [
       { w: 145, a: 80, r: 13, brand: null,        type: null,                         d: 562.2 },
@@ -319,7 +322,7 @@ export function SetupConfiguratorModule() {
                     </div>
                     <div style={{ padding: '20px' }}>
                       <div style={{ fontSize: 28, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', marginBottom: 4 }}>{result.ring.ref}</div>
-                      <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 16 }}>Diamètre extérieur {result.ring.outerDiameter} mm · Largeur {result.ring.width} mm</div>
+                      <div style={{ fontSize: 12, color: THEME.text.muted, marginBottom: 16 }}>Ø ext. {result.ring.outerDiameter} mm · Ø int. {result.ring.innerDiameter} mm · Largeur {result.ring.width} mm</div>
                       <div style={{ fontSize: 12, color: THEME.text.secondary, lineHeight: 1.7, padding: '10px 14px', background: 'rgba(34,197,94,0.06)', borderRadius: 8, borderLeft: `3px solid ${THEME.accent.green}55` }}>
                         Cet anneau s'insère dans votre passage de roue avec {Math.round(result.mas - result.ring.outerDiameter)} mm de marge.
                       </div>
@@ -329,7 +332,7 @@ export function SetupConfiguratorModule() {
                           {result.alternatives.map(r => (
                             <div key={r.ref} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: THEME.text.muted, padding: '5px 0', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
                               <span>{r.ref}</span>
-                              <span>Ø {r.outerDiameter} mm</span>
+                              <span>Ø ext. {r.outerDiameter} mm</span>
                             </div>
                           ))}
                         </div>
