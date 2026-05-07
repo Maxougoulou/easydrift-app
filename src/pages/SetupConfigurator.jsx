@@ -115,11 +115,17 @@ function findBestRing(mas) {
   return { ring: compatible[0], alternatives: compatible.slice(1) };
 }
 
-function sortedTires(ring) {
+function sortedTires(ring, oemRim) {
   return [...ring.tires].sort((a, b) => {
     const aNan = a.brand?.toUpperCase() === 'NANKANG' ? 0 : 1;
     const bNan = b.brand?.toUpperCase() === 'NANKANG' ? 0 : 1;
     if (aNan !== bNan) return aNan - bNan;
+    // Prefer matching OEM rim size
+    if (oemRim) {
+      const aRim = a.r === oemRim ? 0 : 1;
+      const bRim = b.r === oemRim ? 0 : 1;
+      if (aRim !== bRim) return aRim - bRim;
+    }
     if (b.d !== a.d) return b.d - a.d;
     return a.a - b.a;
   });
@@ -302,7 +308,7 @@ export function SetupConfiguratorModule() {
             )}
 
             {result.ring && (() => {
-              const tires = sortedTires(result.ring);
+              const tires = sortedTires(result.ring, result.input?.r);
               const topTires = tires.slice(0, 6);
               const nankangTires = tires.filter(t => t.brand?.toUpperCase() === 'NANKANG');
               const bestNankang = nankangTires[0];
