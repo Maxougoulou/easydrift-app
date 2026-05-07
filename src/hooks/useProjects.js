@@ -147,20 +147,28 @@ export function useProjectAttachments(projectId) {
     setUploading(true);
     try {
       const path = `${projectId}/${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from('project-attachments').upload(path, file);
-      if (!error) {
-        const { data: { publicUrl } } = supabase.storage.from('project-attachments').getPublicUrl(path);
-        await supabase.from('project_attachments').insert({
-          project_id: projectId,
-          name: file.name,
-          url: publicUrl,
-          size: file.size,
-          mime_type: file.type,
-          storage_path: path,
-          uploaded_by: uploadedBy,
-        });
-        await fetchAttachments();
+      const { error: storageError } = await supabase.storage.from('project-attachments').upload(path, file);
+      if (storageError) {
+        console.error('[upload] storage error:', storageError);
+        alert('Erreur upload fichier : ' + storageError.message);
+        return;
       }
+      const { data: { publicUrl } } = supabase.storage.from('project-attachments').getPublicUrl(path);
+      const { error: dbError } = await supabase.from('project_attachments').insert({
+        project_id: projectId,
+        name: file.name,
+        url: publicUrl,
+        size: file.size,
+        mime_type: file.type,
+        storage_path: path,
+        uploaded_by: uploadedBy,
+      });
+      if (dbError) {
+        console.error('[upload] db error:', dbError);
+        alert('Erreur base de données : ' + dbError.message);
+        return;
+      }
+      await fetchAttachments();
     } finally {
       setUploading(false);
     }
