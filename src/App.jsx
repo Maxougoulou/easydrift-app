@@ -22,7 +22,7 @@ import { SetupConfiguratorModule } from './pages/SetupConfigurator';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
-const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'configurator', 'vehicles', 'calendar'];
+const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'configurator', 'vehicles'];
 
 function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
   const [showMore, setShowMore] = useState(false);
