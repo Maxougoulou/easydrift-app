@@ -363,6 +363,12 @@ export function SetupConfiguratorModule() {
                             {bestNankang.w}/{bestNankang.a}/{bestNankang.r}
                           </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: THEME.text.primary, marginTop: 2 }}>NANKANG {bestNankang.type}</div>
+                          {result.input && Math.abs(bestNankang.w - result.input.w) > 20 && (
+                            <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 7, background: `${THEME.accent.yellow}15`, border: `1px solid ${THEME.accent.yellow}44`, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <span style={{ color: THEME.accent.yellow, fontSize: 13, flexShrink: 0 }}>⚠</span>
+                              <span style={{ fontSize: 11, color: THEME.accent.yellow, lineHeight: 1.5 }}>Largeur du pneu support différente du pneu d'origine — vérifiez la compatibilité.</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
