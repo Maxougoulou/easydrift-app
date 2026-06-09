@@ -19,7 +19,8 @@ const DEFAULT_ZONES = [
 ];
 
 const DEFAULT_CONFIG = {
-  ringsPerPalette: { 'DTS 230×660': 6, 'DTS 200×600': 10, 'DTS 180×560': 12 },
+  ringsPerPalette: { 'DTS 230×660': 10, 'DTS 200×600': 20, 'DTS 180×560': 20 },
+  ringsPerColis: 2,
   emballagePalette: 8,
   manutentionPalette: 4,
   emballageColis: 3,
@@ -350,11 +351,21 @@ function EditRatesModal({ zones, config, onSave, onClose }) {
             ))}
           </tbody>
         </table>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
-          {[['emballagePalette','Emballage palette'],['manutentionPalette','Manutention'],['emballageColis','Emballage colis']].map(([k, label]) => (
-            <div key={k}><div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label} (€)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+          {[['emballagePalette','Emballage palette (€)'],['manutentionPalette','Manutention (€)'],['emballageColis','Emballage colis (€)'],['ringsPerColis','Anneaux / colis']].map(([k, label]) => (
+            <div key={k}><div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
               <input type="number" style={{ ...inp, width: '100%', textAlign: 'left' }} value={lc[k]} onChange={e => setLc(c => ({ ...c, [k]: parseFloat(e.target.value) || 0 }))} /></div>
           ))}
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: THEME.text.primary, marginBottom: 8 }}>Capacité palette</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {RING_TYPES.map(rt => (
+              <div key={rt}><div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{rt}</div>
+                <input type="number" style={{ ...inp, width: '100%', textAlign: 'left' }} value={lc.ringsPerPalette[rt]}
+                  onChange={e => setLc(c => ({ ...c, ringsPerPalette: { ...c.ringsPerPalette, [rt]: parseInt(e.target.value) || 1 } }))} /></div>
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Btn variant="secondary" onClick={onClose}>Annuler</Btn>
@@ -403,48 +414,60 @@ export function ExpeditionModule() {
 
   const areaStats = useMemo(() => {
     if (!areaHistory.length) return null;
+    const rpc = config.ringsPerColis ?? 2;
     const colisRec = areaHistory.filter(h => h.colis > '0' || h.palettes === '0');
     const palRec   = areaHistory.filter(h => h.palettes > '0');
-    const colCosts = colisRec.map(h => parseFloat(h.costJeepest));
+    // Normaliser au coût par colis (un colis = 2 anneaux)
+    const colCostsPerColis = colisRec.map(h => {
+      const cost = parseFloat(h.costJeepest);
+      const numColis = Math.max(1, Math.ceil((parseInt(h.qty) || rpc) / rpc));
+      return cost / numColis;
+    }).filter(c => !isNaN(c) && c > 10);
     const palCosts = palRec.map(h => parseFloat(h.costJeepest));
     return {
       total: areaHistory.length,
-      colis: colCosts.length ? { avg: avg(colCosts), min: Math.min(...colCosts), max: Math.max(...colCosts), n: colCosts.length } : null,
+      colis: colCostsPerColis.length ? {
+        avgPerColis: avg(colCostsPerColis),
+        min: Math.min(...colCostsPerColis),
+        max: Math.max(...colCostsPerColis),
+        n: colCostsPerColis.length,
+      } : null,
       palette: palCosts.length ? { avg: avg(palCosts), min: Math.min(...palCosts), max: Math.max(...palCosts), n: palCosts.length } : null,
       recent: areaHistory.slice(-5).reverse(),
     };
-  }, [areaHistory]);
+  }, [areaHistory, config]);
 
   const estimate = useMemo(() => {
     const qty = parseInt(calcQty);
     if (!qty || qty <= 0 || !activeZoneId) return null;
 
     const zone = zones.find(z => z.id === activeZoneId);
-    const rpp = config.ringsPerPalette[calcRing] || 8;
-    const isPalette = calcMode === 'auto' ? qty >= 5 : calcMode === 'palette';
+    const rpp = config.ringsPerPalette[calcRing] || 20;
+    const rpc = config.ringsPerColis ?? 2;
+    // Auto: palette quand ça dépasse la moitié d'une palette
+    const isPalette = calcMode === 'auto' ? qty >= Math.ceil(rpp / 2) : calcMode === 'palette';
 
     if (isPalette) {
       const palettes = Math.ceil(qty / rpp);
-      // Use area history if available, otherwise zone rate
       const palCosts = areaHistory.filter(h => h.palettes > '0').map(h => parseFloat(h.costJeepest)).filter(c => !isNaN(c) && c > 20);
-      const transportPerPalette = palCosts.length
-        ? avg(palCosts) // avg per palette shipment from area
-        : (zone?.ratePalette ?? 150);
-      const transport = palettes === 1 ? transportPerPalette : palettes * (zone?.ratePalette ?? 150);
+      const ratePerPalette = palCosts.length ? avg(palCosts) : (zone?.ratePalette ?? 150);
+      const transport = palettes * ratePerPalette;
       const emballage = palettes * config.emballagePalette;
       const manutention = palettes * config.manutentionPalette;
       const total = transport + emballage + manutention;
       const source = palCosts.length ? `moy. historique (${palCosts.length} palette${palCosts.length > 1 ? 's' : ''})` : `tarif zone`;
       return { mode: 'palette', palettes, transport, emballage, manutention, total, perRing: total / qty, source };
     } else {
-      const colCosts = areaHistory.filter(h => h.colis > '0' || h.palettes === '0').map(h => parseFloat(h.costJeepest)).filter(c => !isNaN(c) && c > 15);
-      const transport = colCosts.length ? avg(colCosts) : (zone?.rateColis ?? 52);
-      const emballage = config.emballageColis;
+      const numColis = Math.ceil(qty / rpc);
+      // Taux par colis depuis l'historique normalisé
+      const ratePerColis = areaStats?.colis?.avgPerColis ?? zone?.rateColis ?? 52;
+      const transport = numColis * ratePerColis;
+      const emballage = numColis * config.emballageColis;
       const total = transport + emballage;
-      const source = colCosts.length ? `moy. historique (${colCosts.length} colis)` : `tarif zone`;
-      return { mode: 'colis', transport, emballage, total, perRing: total / qty, source };
+      const source = areaStats?.colis ? `moy. historique (${areaStats.colis.n} livraisons)` : `tarif zone`;
+      return { mode: 'colis', numColis, transport, emballage, total, perRing: total / qty, source };
     }
-  }, [calcQty, calcMode, calcRing, activeZoneId, areaHistory, zones, config]);
+  }, [calcQty, calcMode, calcRing, activeZoneId, areaHistory, areaStats, zones, config]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const saveShipment = (s) => {
@@ -563,8 +586,8 @@ export function ExpeditionModule() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                     {areaStats.colis && (
                       <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 9, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Colis ({areaStats.colis.n} expéd.)</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif' }}>{areaStats.colis.avg.toFixed(0)} €</div>
+                        <div style={{ fontSize: 9, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Par colis (2 anneaux) · {areaStats.colis.n} expéd.</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif' }}>{areaStats.colis.avgPerColis.toFixed(0)} €</div>
                         <div style={{ fontSize: 10, color: THEME.text.muted }}>min {areaStats.colis.min.toFixed(0)} € · max {areaStats.colis.max.toFixed(0)} €</div>
                       </div>
                     )}
@@ -615,7 +638,7 @@ export function ExpeditionModule() {
               <div>
                 <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 6, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mode</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {[['auto','Auto (≥5 = palette)'],['colis','Colis'],['palette','Palette']].map(([val, label]) => (
+                  {[['auto','Auto'],['colis','Colis'],['palette','Palette']].map(([val, label]) => (
                     <button key={val} onClick={() => setCalcMode(val)} style={{
                       flex: 1, padding: '8px 4px', borderRadius: 7, border: 'none', cursor: 'pointer',
                       fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
@@ -630,7 +653,10 @@ export function ExpeditionModule() {
               {estimate ? (
                 <div style={{ borderRadius: 12, border: `2px solid ${THEME.accent.green}44`, background: `${THEME.accent.green}0A`, padding: '14px 16px' }}>
                   <div style={{ fontSize: 10, color: THEME.accent.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
-                    Estimation · {estimate.mode === 'palette' ? `${estimate.palettes} palette${estimate.palettes > 1 ? 's' : ''}` : 'Colis'} · {estimate.source}
+                    {estimate.mode === 'palette'
+                      ? `${estimate.palettes} palette${estimate.palettes > 1 ? 's' : ''}`
+                      : `${estimate.numColis} colis (2 anneaux / colis)`
+                    } · {estimate.source}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: THEME.text.secondary }}>
