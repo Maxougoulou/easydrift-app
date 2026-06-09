@@ -16,13 +16,14 @@ import { LoginPage } from './pages/Login';
 import { DashboardModule } from './pages/Dashboard';
 import { ProjectsModule } from './pages/Projects';
 import { VehiclesModule } from './pages/Vehicles';
-import { CalendarModule, BudgetModule, MessagesModule, GalleryModule } from './pages/Modules';
+import { CalendarModule, MessagesModule } from './pages/Modules';
+import { ExpeditionModule } from './pages/Expedition';
 import { TrackDaysModule } from './pages/TrackDays';
 import { SetupConfiguratorModule } from './pages/SetupConfigurator';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
-const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'configurator', 'vehicles'];
+const PRIMARY_NAV_IDS = ['dashboard', 'projects', 'trackdays', 'configurator', 'expedition'];
 
 function MobileNav({ activeSection, onNavigate, currentMember, onSignOut }) {
   const [showMore, setShowMore] = useState(false);
@@ -176,10 +177,9 @@ export default function App() {
       case 'trackdays':     return <TrackDaysModule />;
       case 'configurator':  return <SetupConfiguratorModule />;
       case 'vehicles':      return <VehiclesModule />;
+      case 'expedition':  return <ExpeditionModule />;
       case 'calendar': return <CalendarModule />;
-      case 'budget': return <BudgetModule />;
       case 'messages': return <MessagesModule />;
-      case 'gallery': return <GalleryModule />;
       default: return <DashboardModule />;
     }
   };
