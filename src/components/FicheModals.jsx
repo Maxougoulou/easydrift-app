@@ -2,6 +2,7 @@ import { useState } from 'react';
 import QRCode from 'qrcode';
 import { THEME } from '../lib/theme';
 import { Btn } from './ui';
+import { useAppContext } from '../lib/AppContext';
 
 // Propositions pré-remplies "retour de piste" — décochées par défaut,
 // on coche ce qu'on veut inclure dans la fiche.
@@ -150,6 +151,7 @@ export async function openFichePdf(fiche, vehicle, taches) {
 // ─── MODAL CRÉATION DE FICHE ─────────────────────────────────────────────────
 
 export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
+  const { updatePart } = useAppContext();
   const [titre, setTitre] = useState('Retour de piste — contrôle');
   const [km, setKm] = useState(vehicle.mileage ?? '');
   const [notes, setNotes] = useState('');
@@ -323,6 +325,48 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               />
               <Btn variant="secondary" onClick={addCustom}>+ Ajouter</Btn>
             </div>
+
+            {/* Stock de pièces : visualiser et cocher ce que le mécano doit recommander */}
+            {(vehicle.parts ?? []).length > 0 && (
+              <>
+                <label style={lbl}>Stock de pièces du véhicule — coche ce qu'il doit recommander</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+                  {(vehicle.parts ?? []).map(p => {
+                    const qty = p.qty ?? 1;
+                    const epuise = qty === 0;
+                    return (
+                      <div key={p.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                        borderRadius: 8, background: 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${epuise ? THEME.accent.red + '33' : THEME.border}`,
+                      }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', minWidth: 26, fontVariantNumeric: 'tabular-nums' }}>
+                          {qty}×
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 13, color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
+                          {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 8 }}>réf. {p.reference}</span>}
+                          {epuise && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: THEME.accent.redDim, color: THEME.accent.red, marginLeft: 8, textTransform: 'uppercase' }}>Épuisé</span>}
+                        </div>
+                        <button
+                          onClick={() => updatePart(p.id, { reorder: !p.reorder })}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', flexShrink: 0 }}
+                        >
+                          <span style={{
+                            width: 16, height: 16, borderRadius: 4,
+                            border: `2px solid ${p.reorder ? THEME.accent.yellow : THEME.text.muted}`,
+                            background: p.reorder ? THEME.accent.yellow : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#0D0D0F', fontSize: 11, fontWeight: 900,
+                          }}>{p.reorder ? '✓' : ''}</span>
+                          <span style={{ fontSize: 11, fontWeight: p.reorder ? 700 : 400, color: p.reorder ? THEME.accent.yellow : THEME.text.muted, whiteSpace: 'nowrap' }}>À recommander</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             <label style={lbl}>Note libre pour le mécano</label>
             <textarea
