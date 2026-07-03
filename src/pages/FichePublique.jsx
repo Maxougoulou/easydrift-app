@@ -184,13 +184,12 @@ export function FichePublique({ token }) {
 // ─── Sous-composants ─────────────────────────────────────────────────────────
 
 function PublicShell({ children }) {
+  // Le body global est en overflow:hidden → cette page gère son propre scroll
   return (
-    <div style={{ minHeight: '100vh', background: THEME.bg.app, fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>
-      <div style={{ padding: '14px 18px', borderBottom: `1px solid ${THEME.border}`, background: THEME.bg.sidebar, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 17, fontWeight: 900, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.05em' }}>
-          EASY<span style={{ color: THEME.accent.orange }}>DRIFT</span>
-        </span>
-        <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 'auto' }}>Espace mécano</span>
+    <div style={{ height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: THEME.bg.app, fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
+      <div style={{ padding: '12px 18px', borderBottom: `1px solid ${THEME.border}`, background: THEME.bg.sidebar, display: 'flex', alignItems: 'center', gap: 8, position: 'sticky', top: 0, zIndex: 10 }}>
+        <img src="/logo-easydrift.png" alt="EASYDRIFT" style={{ height: 22, display: 'block' }} />
+        <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 'auto', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Espace mécano</span>
       </div>
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '18px 14px 40px' }}>{children}</div>
     </div>

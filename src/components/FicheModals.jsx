@@ -39,14 +39,13 @@ export async function openFichePdf(fiche, vehicle, taches) {
 <title>Fiche intervention — ${vehicle.name}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: 36px 44px; font-size: 13px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #F07814; padding-bottom: 16px; margin-bottom: 22px; }
-  .brand { font-size: 26px; font-weight: 900; letter-spacing: 0.06em; }
-  .brand span { color: #F07814; }
-  .brand-sub { font-size: 11px; color: #666; margin-top: 3px; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; padding: 0 0 36px; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .header { display: flex; justify-content: space-between; align-items: center; background: #0D0D0F; padding: 20px 44px; border-bottom: 4px solid #F07814; margin-bottom: 24px; }
+  .header img.logo { height: 36px; display: block; }
   .doc-type { text-align: right; }
-  .doc-type h1 { font-size: 17px; text-transform: uppercase; letter-spacing: 0.08em; }
-  .doc-type .date { font-size: 12px; color: #666; margin-top: 4px; }
+  .doc-type h1 { font-size: 16px; text-transform: uppercase; letter-spacing: 0.08em; color: #fff; }
+  .doc-type .date { font-size: 12px; color: #999; margin-top: 4px; }
+  .content { padding: 0 44px; }
   .vehicle-box { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 22px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
   .vehicle-box .field .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 2px; }
   .vehicle-box .field .val { font-size: 15px; font-weight: 700; }
@@ -62,21 +61,19 @@ export async function openFichePdf(fiche, vehicle, taches) {
   .qr-section .txt p { font-size: 12px; color: #555; line-height: 1.5; }
   .qr-section .txt .url { font-size: 10px; color: #999; margin-top: 8px; word-break: break-all; }
   .footer { margin-top: 26px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; text-align: center; }
-  @media print { body { padding: 20px 28px; } }
+  @media print { .header { margin-bottom: 18px; } }
 </style>
 </head>
 <body>
   <div class="header">
-    <div>
-      <div class="brand">EASY<span>DRIFT</span></div>
-      <div class="brand-sub">Gestion de flotte — maxence.fortier@gmail.com</div>
-    </div>
+    <img class="logo" src="${window.location.origin}/logo-easydrift.png" alt="EASYDRIFT" />
     <div class="doc-type">
       <h1>Fiche d'intervention</h1>
       <div class="date">${dateStr}</div>
     </div>
   </div>
 
+  <div class="content">
   <div class="vehicle-box">
     <div class="field"><div class="lbl">Véhicule</div><div class="val">${vehicle.name}</div></div>
     <div class="field"><div class="lbl">Immatriculation</div><div class="val">${vehicle.plate ?? '—'}</div></div>
@@ -107,7 +104,11 @@ export async function openFichePdf(fiche, vehicle, taches) {
   </div>
 
   <div class="footer">EASYDRIFT — Fiche générée le ${new Date().toLocaleDateString('fr-FR')} — Merci de mettre à jour le kilométrage si besoin</div>
-  <script>window.onload = () => setTimeout(() => window.print(), 300);</script>
+  </div>
+  <script>
+    // Attendre le chargement du logo avant d'imprimer
+    window.onload = () => setTimeout(() => window.print(), 450);
+  </script>
 </body>
 </html>`;
 
