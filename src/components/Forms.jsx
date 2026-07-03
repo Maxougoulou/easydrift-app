@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { THEME } from '../lib/theme';
 import { Modal, FormField, Input, Select, Textarea, FormActions } from './Modal';
+import { supabase } from '../lib/supabase';
 
 // ─── PROJET ───────────────────────────────────────────────────────────────────
 export function ProjectForm({ project, team, onSubmit, onClose }) {
@@ -163,6 +164,7 @@ export function TaskForm({ team, onSubmit, onClose }) {
 export function VehicleForm({ vehicle, onSubmit, onClose }) {
   const editing = !!vehicle;
   const [loading, setLoading] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
   const [form, setForm] = useState({
     name: vehicle?.name ?? '',
     plate: vehicle?.plate ?? '',
@@ -170,27 +172,46 @@ export function VehicleForm({ vehicle, onSubmit, onClose }) {
     mileage: vehicle?.mileage ?? 0,
     role: vehicle?.role ?? '',
     color: vehicle?.color ?? '#1a1a2e',
-    status: vehicle?.status ?? 'Opérationnel',
     next_ct: vehicle?.next_ct ?? vehicle?.nextCT ?? '',
     last_ct_date: vehicle?.last_ct_date ?? vehicle?.lastCT?.date ?? '',
     last_ct_result: vehicle?.last_ct_result ?? vehicle?.lastCT?.result ?? 'Favorable',
     last_ct_center: vehicle?.last_ct_center ?? vehicle?.lastCT?.center ?? '',
     next_revision_mileage: vehicle?.next_revision_mileage ?? vehicle?.nextRevision?.mileage ?? 0,
     next_revision_date: vehicle?.next_revision_date ?? vehicle?.nextRevision?.date ?? '',
+    date_assurance: vehicle?.date_assurance ?? '',
+    photo_url: vehicle?.photo_url ?? '',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // Upload photo si fournie
+    let photoUrl = form.photo_url || null;
+    if (photoFile) {
+      const safeName = photoFile.name
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `photos/${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.storage.from('vehicle-files').upload(path, photoFile);
+      if (!upErr) {
+        const { data: pub } = supabase.storage.from('vehicle-files').getPublicUrl(path);
+        photoUrl = pub.publicUrl;
+      }
+    }
+
+    // Le statut n'est plus envoyé : il est TOUJOURS calculé
     await onSubmit({
       ...form,
+      photo_url: photoUrl,
       year: Number(form.year),
       mileage: Number(form.mileage),
       next_revision_mileage: Number(form.next_revision_mileage),
       next_ct: form.next_ct || null,
       last_ct_date: form.last_ct_date || null,
       next_revision_date: form.next_revision_date || null,
+      date_assurance: form.date_assurance || null,
     });
     setLoading(false);
     onClose();
@@ -216,11 +237,27 @@ export function VehicleForm({ vehicle, onSubmit, onClose }) {
             <FormField label="Rôle">
               <Input value={form.role} onChange={e => set('role', e.target.value)} placeholder="Voiture de drift principale" />
             </FormField>
-            <FormField label="Statut">
-              <Select value={form.status} onChange={e => set('status', e.target.value)}>
-                {['Opérationnel', 'En préparation', 'Attention', 'Hors service'].map(s => <option key={s} value={s}>{s}</option>)}
-              </Select>
+            <FormField label="Échéance assurance">
+              <Input type="date" value={form.date_assurance} onChange={e => set('date_assurance', e.target.value)} />
             </FormField>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Photo du véhicule</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e => setPhotoFile(e.target.files?.[0] ?? null)}
+                style={{ fontSize: 12, color: THEME.text.secondary }}
+              />
+              {(photoFile || form.photo_url) && (
+                <img
+                  src={photoFile ? URL.createObjectURL(photoFile) : form.photo_url}
+                  alt="Aperçu"
+                  style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: 6, border: `1px solid ${THEME.border}` }}
+                />
+              )}
+            </div>
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11, color: THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Couleur d'affichage</label>

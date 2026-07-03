@@ -41,6 +41,11 @@ export const STATUS_CONFIG = {
   'Opérationnel': { color: '#22C55E', bg: 'rgba(34,197,94,0.15)', dot: '#22C55E' },
   'En préparation': { color: '#F07814', bg: 'rgba(240,120,20,0.15)', dot: '#F07814' },
   'Attention': { color: '#EF4444', bg: 'rgba(239,68,68,0.15)', dot: '#EF4444' },
+  'À réviser': { color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', dot: '#F59E0B' },
+  'Au garage': { color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', dot: '#3B82F6' },
+  'envoyée': { color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', dot: '#3B82F6' },
+  'terminée': { color: '#22C55E', bg: 'rgba(34,197,94,0.15)', dot: '#22C55E' },
+  'brouillon': { color: '#8A8790', bg: 'rgba(138,135,144,0.12)', dot: '#8A8790' },
 };
 
 export const PRIORITY_CONFIG = {

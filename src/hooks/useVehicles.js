@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
+import { computeVehicleStatus } from '../lib/vehicleStatus';
 
 export function useVehicles() {
   const [vehicles, setVehicles] = useState([]);
@@ -9,17 +10,27 @@ export function useVehicles() {
   const fetchData = async () => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select(`*, maintenance(*)`)
+      .select(`*, maintenance(*), fiches(*, fiche_taches(*))`)
       .order('id');
 
     if (!error && data) {
-      const normalized = data.map(v => ({
-        ...v,
-        nextCT: v.next_ct,
-        lastCT: { date: v.last_ct_date, result: v.last_ct_result, center: v.last_ct_center },
-        nextRevision: { mileage: v.next_revision_mileage, date: v.next_revision_date },
-        maintenance: (v.maintenance ?? []).sort((a, b) => new Date(b.date) - new Date(a.date)),
-      }));
+      const normalized = data.map(v => {
+        const fiches = (v.fiches ?? [])
+          .map(f => ({
+            ...f,
+            taches: (f.fiche_taches ?? []).sort((a, b) => (a.position - b.position) || (a.id - b.id)),
+          }))
+          .sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation));
+        return {
+          ...v,
+          nextCT: v.next_ct,
+          lastCT: { date: v.last_ct_date, result: v.last_ct_result, center: v.last_ct_center },
+          nextRevision: { mileage: v.next_revision_mileage, date: v.next_revision_date },
+          maintenance: (v.maintenance ?? []).sort((a, b) => new Date(b.date) - new Date(a.date)),
+          fiches,
+          status: computeVehicleStatus({ ...v, fiches }),  // statut TOUJOURS calculé
+        };
+      });
       setVehicles(normalized);
     }
     setLoading(false);
@@ -36,6 +47,8 @@ export function useVehicles() {
       .channel('vehicles-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fiches' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fiche_taches' }, fetchData)
       .subscribe();
 
     return () => {
@@ -83,7 +96,17 @@ export function useVehicles() {
     toast.success('Entretien supprimé');
   };
 
-  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, refetch: fetchData };
+  // Édition rapide du kilométrage (card ou page véhicule)
+  const updateMileage = async (id, mileage) => {
+    const km = parseInt(mileage);
+    if (isNaN(km) || km < 0) { toast.error('Kilométrage invalide'); return; }
+    const { error } = await supabase.from('vehicles').update({ mileage: km }).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Kilométrage mis à jour');
+  };
+
+  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, refetch: fetchData };
 }
 
 export function useVehicleDocs(vehicleId) {
