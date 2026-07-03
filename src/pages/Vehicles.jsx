@@ -792,8 +792,9 @@ function PartsTab({ vehicle }) {
 
   const changeQty = (p, delta) => {
     const next = (p.qty ?? 1) + delta;
-    if (next <= 0) { setConfirmDelete(p.id); return; }
-    updatePart(p.id, { qty: next });
+    if (next < 0) return;
+    // Dernière pièce utilisée → flag "à recommander" automatiquement
+    updatePart(p.id, { qty: next, ...(next === 0 ? { reorder: true } : {}) });
   };
 
   const qtyBtn = {
@@ -849,13 +850,16 @@ function PartsTab({ vehicle }) {
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {parts.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: THEME.bg.card, border: `1px solid ${confirmDelete === p.id ? THEME.accent.red + '55' : THEME.border}` }}>
+        {parts.map(p => {
+          const qty = p.qty ?? 1;
+          const epuise = qty === 0;
+          return (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: THEME.bg.card, border: `1px solid ${confirmDelete === p.id ? THEME.accent.red + '55' : epuise ? THEME.accent.red + '33' : THEME.border}` }}>
             {/* Quantité avec stepper */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <button onClick={() => changeQty(p, -1)} style={qtyBtn} title="Utilisée / retirer une">−</button>
-              <span style={{ fontSize: 16, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 22, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-                {p.qty ?? 1}
+              <span style={{ fontSize: 16, fontWeight: 700, color: epuise ? THEME.accent.red : THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 22, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                {qty}
               </span>
               <button onClick={() => changeQty(p, +1)} style={qtyBtn} title="En ajouter une">+</button>
             </div>
@@ -863,9 +867,27 @@ function PartsTab({ vehicle }) {
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary }}>{p.name}</span>
                 {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.05em' }}>réf. {p.reference}</span>}
+                {epuise && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 4, background: THEME.accent.redDim, color: THEME.accent.red, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Épuisé</span>}
               </div>
               {p.notes && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic', marginTop: 1 }}>{p.notes}</div>}
             </div>
+            {/* Case "À recommander" — visible par le mécano sur la fiche */}
+            <button
+              onClick={() => updatePart(p.id, { reorder: !p.reorder })}
+              title="Si coché, le mécano voit qu'il faut recommander cette pièce"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', flexShrink: 0 }}
+            >
+              <span style={{
+                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                border: `2px solid ${p.reorder ? THEME.accent.yellow : THEME.text.muted}`,
+                background: p.reorder ? THEME.accent.yellow : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#0D0D0F', fontSize: 11, fontWeight: 900,
+              }}>{p.reorder ? '✓' : ''}</span>
+              <span style={{ fontSize: 11, fontWeight: p.reorder ? 700 : 400, color: p.reorder ? THEME.accent.yellow : THEME.text.muted, whiteSpace: 'nowrap' }}>
+                À recommander
+              </span>
+            </button>
             {confirmDelete === p.id ? (
               <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Retirer ?</span>
@@ -876,7 +898,8 @@ function PartsTab({ vehicle }) {
               <button onClick={() => setConfirmDelete(p.id)} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}>×</button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

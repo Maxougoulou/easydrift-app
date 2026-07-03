@@ -124,14 +124,23 @@ export function FichePublique({ token }) {
               📦 Pièces fournies avec le véhicule — rien à commander
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {pieces.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 28 }}>{p.qty ?? 1}×</span>
-                  <span style={{ color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
-                  {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted }}>réf. {p.reference}</span>}
-                  {p.notes && <span style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>— {p.notes}</span>}
-                </div>
-              ))}
+              {pieces.map(p => {
+                const epuise = (p.qty ?? 1) === 0;
+                const aRecommander = p.reorder || epuise;
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 28 }}>{p.qty ?? 1}×</span>
+                    <span style={{ color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
+                    {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted }}>réf. {p.reference}</span>}
+                    {aRecommander && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 4, background: THEME.accent.yellowDim, color: THEME.accent.yellow }}>
+                        ⚠ À recommander{epuise ? ' — stock épuisé' : ''}
+                      </span>
+                    )}
+                    {p.notes && <span style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>— {p.notes}</span>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

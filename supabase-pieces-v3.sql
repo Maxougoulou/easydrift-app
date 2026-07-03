@@ -3,8 +3,9 @@
 -- À coller dans l'éditeur SQL de Supabase APRÈS supabase-fiches-v2.sql
 -- ============================================================
 
--- Quantité en stock
+-- Quantité en stock + flag "à recommander"
 ALTER TABLE vehicle_parts ADD COLUMN IF NOT EXISTS qty INTEGER DEFAULT 1;
+ALTER TABLE vehicle_parts ADD COLUMN IF NOT EXISTS reorder BOOLEAN DEFAULT FALSE;
 
 -- fiche_publique_get : inclure les pièces en stock du véhicule
 -- pour que le mécano voie ce qui est fourni avec la voiture
@@ -49,7 +50,8 @@ BEGIN
         'name', p.name,
         'reference', p.reference,
         'qty', COALESCE(p.qty, 1),
-        'notes', p.notes
+        'notes', p.notes,
+        'reorder', COALESCE(p.reorder, FALSE)
       ) ORDER BY p.name)
       FROM vehicle_parts p WHERE p.vehicle_id = f.vehicle_id
     ), '[]'::json)

@@ -62,6 +62,8 @@ export async function openFichePdf(fiche, vehicle, taches) {
   .piece-name { font-weight: 600; }
   .piece-ref { font-size: 11px; color: #777; }
   .piece-notes { font-size: 11px; color: #777; font-style: italic; }
+  .piece-qty-zero { color: #c62828; }
+  .piece-reorder { font-size: 10px; font-weight: 800; color: #9a6700; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 4px; padding: 1px 7px; letter-spacing: 0.03em; }
   .pieces-hint { font-size: 11px; color: #1a7f3c; margin-top: 8px; font-weight: 600; }
   .qr-section { margin-top: 28px; border: 2px solid #F07814; border-radius: 10px; padding: 18px 22px; display: flex; gap: 22px; align-items: center; page-break-inside: avoid; }
   .qr-section img { width: 130px; height: 130px; }
@@ -105,14 +107,18 @@ export async function openFichePdf(fiche, vehicle, taches) {
   ${pieces.length > 0 ? `
     <h2>📦 Pièces fournies avec le véhicule</h2>
     <div class="pieces-box">
-      ${pieces.map(p => `
+      ${pieces.map(p => {
+        const epuise = (p.qty ?? 1) === 0;
+        const aRecommander = p.reorder || epuise;
+        return `
         <div class="piece">
-          <span class="piece-qty">${p.qty ?? 1}×</span>
+          <span class="piece-qty${epuise ? ' piece-qty-zero' : ''}">${p.qty ?? 1}×</span>
           <span class="piece-name">${p.name}</span>
           ${p.reference ? `<span class="piece-ref">réf. ${p.reference}</span>` : ''}
+          ${aRecommander ? `<span class="piece-reorder">⚠ À RECOMMANDER${epuise ? ' — stock épuisé' : ''}</span>` : ''}
           ${p.notes ? `<span class="piece-notes">— ${p.notes}</span>` : ''}
         </div>
-      `).join('')}
+      `;}).join('')}
       <div class="pieces-hint">Ces pièces accompagnent le véhicule : rien à commander.</div>
     </div>
   ` : ''}
