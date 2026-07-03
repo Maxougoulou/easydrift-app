@@ -87,10 +87,11 @@ function EditableKm({ vehicle, style, inputWidth = 110, onDone }) {
 // ─── MODULE PRINCIPAL ────────────────────────────────────────────────────────
 
 export function VehiclesModule() {
-  const { vehicles, loading, projects, createVehicle, createEvent } = useAppContext();
+  const { vehicles, loading, projects, createVehicle, updateVehicle, createEvent } = useAppContext();
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showPlanEvent, setShowPlanEvent] = useState(false);
+  const [editVehicle, setEditVehicle] = useState(null);
 
   if (loading) return <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}><TopBar title="Véhicules" subtitle="Chargement…" /><Spinner /></div>;
 
@@ -110,11 +111,25 @@ export function VehiclesModule() {
         <FleetStats vehicles={vehicles} />
         <AlertsBar vehicles={vehicles} onPlanify={() => setShowPlanEvent(true)} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(310px, 100%), 1fr))', gap: 16, marginTop: 20 }}>
-          {vehicles.map(v => <VehicleCard key={v.id} vehicle={v} onClick={() => setSelectedVehicle(v)} />)}
+          {vehicles.map(v => (
+            <VehicleCard
+              key={v.id}
+              vehicle={v}
+              onClick={() => setSelectedVehicle(v)}
+              onEdit={() => setEditVehicle(v)}
+            />
+          ))}
         </div>
       </div>
       {showAddVehicle && (
         <VehicleForm onSubmit={createVehicle} onClose={() => setShowAddVehicle(false)} />
+      )}
+      {editVehicle && (
+        <VehicleForm
+          vehicle={editVehicle}
+          onSubmit={(data) => updateVehicle(editVehicle.id, data)}
+          onClose={() => setEditVehicle(null)}
+        />
       )}
       {showPlanEvent && (
         <EventForm vehicles={vehicles} projects={projects} onSubmit={createEvent} onClose={() => setShowPlanEvent(false)} />
@@ -264,7 +279,7 @@ function DeadlineRow({ dotColor, label, value, valueColor, sub }) {
   );
 }
 
-function VehicleCard({ vehicle, onClick }) {
+function VehicleCard({ vehicle, onClick, onEdit }) {
   const [hov, setHov] = useState(false);
   const ctDays = vehicle.next_ct ? daysUntil(vehicle.next_ct) : null;
   const revInfo = nextRevisionInfo(vehicle);
@@ -310,7 +325,24 @@ function VehicleCard({ vehicle, onClick }) {
             </div>
           </>
         )}
-        <div style={{ position: 'absolute', top: 8, right: 8 }}><StatusBadge status={vehicle.status} small /></div>
+        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <StatusBadge status={vehicle.status} small />
+        </div>
+        {/* Bouton édition rapide */}
+        <button
+          onClick={e => { e.stopPropagation(); onEdit(); }}
+          title="Modifier le véhicule"
+          style={{
+            position: 'absolute', top: 8, left: 8,
+            width: 30, height: 30, borderRadius: 8,
+            background: 'rgba(10,10,12,0.72)', border: '1px solid rgba(255,255,255,0.15)',
+            color: THEME.text.secondary, fontSize: 13, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: hov ? 1 : 0.55, transition: 'opacity 0.15s, border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = THEME.accent.orange; e.currentTarget.style.color = THEME.accent.orange; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = THEME.text.secondary; }}
+        >✎</button>
         {/* Plaque immat style FR */}
         {vehicle.plate && (
           <div style={{ position: 'absolute', bottom: 8, left: 10, display: 'flex', alignItems: 'stretch', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
