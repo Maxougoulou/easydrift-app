@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
-import { Avatar, StatusBadge, Btn, Card, Spinner } from '../components/ui';
+import { Avatar, StatusBadge, Btn, Spinner } from '../components/ui';
 import { VehicleForm, MaintenanceForm, EventForm, DocumentForm } from '../components/Forms';
 import { FicheCreateModal, FicheClotureModal, openFichePdf, ficheUrl } from '../components/FicheModals';
 import { useAppContext } from '../lib/AppContext';
@@ -11,19 +11,34 @@ import { daysUntil, formatDeadline, nextRevisionInfo } from '../lib/vehicleStatu
 
 // ─── SILHOUETTE VOITURE (remplace l'emoji 🚗) ────────────────────────────────
 
-function CarSilhouette({ size = 54, color = 'rgba(255,255,255,0.85)' }) {
+function CarSilhouette({ size = 120, color = 'rgba(255,255,255,0.55)' }) {
   return (
-    <svg width={size} height={size * 0.45} viewBox="0 0 120 54" fill="none">
+    <svg width={size} height={size * 0.34} viewBox="0 0 150 51" fill="none">
+      {/* Caisse basse, ligne sportive + aileron */}
       <path
-        d="M8 38 C8 34 10 30 16 29 L26 27 C30 20 38 14 50 13 L68 13 C80 13 90 19 96 27 L106 29 C112 30 114 34 114 38 L113 42 C113 44 111 45 109 45 L13 45 C11 45 9 44 9 42 Z"
-        fill={color} opacity="0.9"
+        d="M6 38 C6 34 9 31 14 30 L26 28 C33 18 45 12 60 12 L80 12 C95 12 106 17 114 26 L132 29 C139 30 144 33 144 37 L143 41 C143 43 141 44 139 44 L11 44 C9 44 6 42 6 40 Z"
+        fill={color}
       />
-      <path d="M34 26 C38 19 45 16 52 16 L58 16 L58 26 Z" fill="#0D0D0F" opacity="0.55" />
-      <path d="M63 16 L70 16 C78 16 85 20 90 26 L63 26 Z" fill="#0D0D0F" opacity="0.55" />
-      <circle cx="31" cy="44" r="9" fill="#0D0D0F" stroke={color} strokeWidth="3.5" />
-      <circle cx="91" cy="44" r="9" fill="#0D0D0F" stroke={color} strokeWidth="3.5" />
+      <path d="M118 15 L127 13 L128 16 L119 18 Z" fill={color} opacity="0.8" />
+      <path d="M40 26 C44 18 52 15 60 15 L66 15 L65 26 Z" fill="#0D0D0F" opacity="0.6" />
+      <path d="M71 15 L79 15 C88 15 96 19 102 25 L70 26 Z" fill="#0D0D0F" opacity="0.6" />
+      <circle cx="38" cy="42" r="8.5" fill="#0D0D0F" stroke={color} strokeWidth="3" />
+      <circle cx="38" cy="42" r="3" fill={color} opacity="0.5" />
+      <circle cx="112" cy="42" r="8.5" fill="#0D0D0F" stroke={color} strokeWidth="3" />
+      <circle cx="112" cy="42" r="3" fill={color} opacity="0.5" />
     </svg>
   );
+}
+
+// Ligne de statut en haut de card : hazard stripes si problème, ligne pleine sinon
+function statusStripe(status) {
+  if (status === 'À réviser') {
+    return `repeating-linear-gradient(-55deg, ${THEME.accent.yellow} 0 8px, rgba(245,158,11,0.25) 8px 16px)`;
+  }
+  if (status === 'Au garage') {
+    return `repeating-linear-gradient(-55deg, ${THEME.accent.blue} 0 8px, rgba(59,130,246,0.25) 8px 16px)`;
+  }
+  return THEME.accent.green;
 }
 
 // ─── ÉDITION RAPIDE DU KILOMÉTRAGE ───────────────────────────────────────────
@@ -124,19 +139,38 @@ function FleetStats({ vehicles }) {
   const year = new Date().getFullYear();
   const totalCost = vehicles.reduce((s, v) => s + yearCost(v, year), 0);
   const dispo = vehicles.filter(v => v.status === 'Opérationnel').length;
+  const auGarage = vehicles.filter(v => v.status === 'Au garage').length;
 
+  const readouts = [
+    {
+      label: 'Disponibles',
+      value: `${dispo}/${vehicles.length}`,
+      color: dispo === vehicles.length ? THEME.accent.green : dispo === 0 ? THEME.accent.red : THEME.accent.yellow,
+    },
+    ...(auGarage > 0 ? [{ label: 'Au garage', value: String(auGarage), color: THEME.accent.blue }] : []),
+    { label: `Coût ${year}`, value: `${totalCost.toLocaleString('fr-FR')} €`, color: THEME.text.primary },
+  ];
+
+  // Pit board : un seul bandeau, readouts séparés par des filets — pas de boîtes
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
-      <Card style={{ padding: '16px 18px' }}>
-        <div style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }}>Coût flotte {year}</div>
-        <div style={{ fontSize: 26, fontWeight: 900, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif' }}>{totalCost.toLocaleString('fr-FR')} €</div>
-      </Card>
-      <Card style={{ padding: '16px 18px' }}>
-        <div style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5 }}>Véhicules disponibles</div>
-        <div style={{ fontSize: 26, fontWeight: 900, fontFamily: 'Rajdhani, sans-serif', color: dispo === vehicles.length ? THEME.accent.green : dispo === 0 ? THEME.accent.red : THEME.accent.yellow }}>
-          {dispo}/{vehicles.length}
+    <div style={{
+      display: 'flex', alignItems: 'stretch', marginBottom: 18,
+      background: 'linear-gradient(90deg, rgba(240,120,20,0.06), transparent 60%)',
+      border: `1px solid ${THEME.border}`, borderRadius: 12, overflow: 'hidden',
+    }}>
+      <div style={{ width: 4, background: THEME.accent.orange, flexShrink: 0 }} />
+      {readouts.map((r, i) => (
+        <div key={r.label} style={{
+          padding: '12px 22px',
+          borderLeft: i > 0 ? `1px solid ${THEME.border}` : 'none',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        }}>
+          <div style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 2 }}>{r.label}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: r.color, fontFamily: 'Rajdhani, sans-serif', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+            {r.value}
+          </div>
         </div>
-      </Card>
+      ))}
     </div>
   );
 }
@@ -186,26 +220,49 @@ function AlertsBar({ vehicles, onPlanify }) {
   });
 
   if (!alerts.length) return null;
+  // Chips compactes : l'urgence informe, elle ne hurle pas
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 4 }}>
-      <div style={{ fontSize: 11, color: THEME.text.muted, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>⚠ Alertes maintenance</div>
-      {alerts.map((a, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: a.severity === 'high' ? THEME.accent.redDim : THEME.accent.yellowDim, border: `1px solid ${a.severity === 'high' ? THEME.accent.red + '44' : THEME.accent.yellow + '44'}` }}>
-          <span style={{ fontSize: 16 }}>{a.severity === 'high' ? '🔴' : '🟡'}</span>
-          <div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary }}>{a.vehicle}</span>
-            <span style={{ fontSize: 12, marginLeft: 8, fontWeight: a.overdue ? 700 : 400, color: a.severity === 'high' ? THEME.accent.red : THEME.accent.yellow }}>
-              {a.text}
-            </span>
-          </div>
-          <Btn size="sm" variant="secondary" style={{ marginLeft: 'auto' }} onClick={onPlanify}>Planifier</Btn>
-        </div>
-      ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+      {alerts.map((a, i) => {
+        const color = a.severity === 'high' ? THEME.accent.red : THEME.accent.yellow;
+        return (
+          <button
+            key={i}
+            onClick={onPlanify}
+            title="Planifier"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '6px 12px', borderRadius: 7, cursor: 'pointer',
+              background: `${color}10`, border: `1px solid ${color}30`,
+              fontFamily: 'inherit', transition: 'border-color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = `${color}70`}
+            onMouseLeave={e => e.currentTarget.style.borderColor = `${color}30`}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: THEME.text.primary }}>{a.vehicle}</span>
+            <span style={{ fontSize: 12, color, fontWeight: 600 }}>{a.text}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
 
 // ─── CARD VÉHICULE ───────────────────────────────────────────────────────────
+
+function DeadlineRow({ dotColor, label, value, valueColor, sub }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '7px 0' }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0, alignSelf: 'center' }} />
+      <span style={{ fontSize: 12, color: THEME.text.secondary, flex: 1 }}>{label}</span>
+      <span style={{ textAlign: 'right' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: valueColor ?? THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+        {sub && <span style={{ display: 'block', fontSize: 10, color: THEME.text.muted, lineHeight: 1.3 }}>{sub}</span>}
+      </span>
+    </div>
+  );
+}
 
 function VehicleCard({ vehicle, onClick }) {
   const [hov, setHov] = useState(false);
@@ -213,83 +270,100 @@ function VehicleCard({ vehicle, onClick }) {
   const revInfo = nextRevisionInfo(vehicle);
   const cost = yearCost(vehicle);
 
-  // Dernière intervention : fiche terminée ou maintenance, la plus récente
   const lastIntervention = useMemo(() => {
     const candidates = [];
-    (vehicle.maintenance ?? []).forEach(m => candidates.push({ date: m.date, label: m.type, detail: (m.parts ?? [])[0] ?? m.notes }));
-    (vehicle.fiches ?? []).filter(f => f.statut === 'terminée').forEach(f => candidates.push({ date: f.date_cloture, label: f.titre, detail: `${(f.taches ?? []).length} tâches` }));
+    (vehicle.maintenance ?? []).forEach(m => candidates.push({ date: m.date, label: m.type }));
+    (vehicle.fiches ?? []).filter(f => f.statut === 'terminée').forEach(f => candidates.push({ date: f.date_cloture, label: f.titre }));
     candidates.sort((a, b) => new Date(b.date) - new Date(a.date));
     return candidates[0] ?? null;
   }, [vehicle]);
 
   const ctColor = ctDays === null ? THEME.text.muted : ctDays < 0 ? THEME.accent.red : ctDays < 30 ? THEME.accent.yellow : THEME.accent.green;
-  const ctBg = ctDays === null ? 'rgba(255,255,255,0.04)' : ctDays < 0 ? THEME.accent.redDim : ctDays < 30 ? THEME.accent.yellowDim : 'rgba(255,255,255,0.04)';
 
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ background: hov ? THEME.bg.cardHover : THEME.bg.card, border: `1px solid ${hov ? 'rgba(240,120,20,0.3)' : THEME.border}`, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.18s ease' }}
+      style={{
+        background: THEME.bg.card,
+        border: `1px solid ${hov ? 'rgba(240,120,20,0.45)' : THEME.border}`,
+        borderRadius: 14, overflow: 'hidden', cursor: 'pointer',
+        transition: 'border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
+        transform: hov ? 'translateY(-2px)' : 'none',
+        boxShadow: hov ? '0 10px 30px rgba(0,0,0,0.45)' : 'none',
+      }}
     >
-      {/* Header visuel : photo ou silhouette */}
-      <div style={{ height: 110, background: vehicle.photo_url ? '#000' : `linear-gradient(135deg, ${vehicle.color} 0%, #0D0D0F 100%)`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: `1px solid ${THEME.border}`, overflow: 'hidden' }}>
+      {/* Ligne de statut : hazard stripes si À réviser / Au garage, verte sinon */}
+      <div style={{ height: 3, background: statusStripe(vehicle.status) }} />
+
+      {/* Visuel : photo ou silhouette sur fond technique */}
+      <div style={{ height: 96, background: vehicle.photo_url ? '#000' : `linear-gradient(120deg, ${vehicle.color} 0%, #101013 70%)`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         {vehicle.photo_url ? (
-          <img src={vehicle.photo_url} alt={vehicle.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+          <img src={vehicle.photo_url} alt={vehicle.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <>
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: `repeating-conic-gradient(rgba(255,255,255,0.03) 0% 25%, transparent 0% 50%)`, backgroundSize: '20px 20px' }} />
-            <CarSilhouette size={78} />
+            {/* Grille technique subtile */}
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
+            <div style={{ transform: hov ? 'translateX(4px)' : 'none', transition: 'transform 0.25s ease' }}>
+              <CarSilhouette size={122} />
+            </div>
           </>
         )}
-        <div style={{ position: 'absolute', top: 10, right: 10 }}><StatusBadge status={vehicle.status} small /></div>
-        <div style={{ position: 'absolute', bottom: 8, left: 12, fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 600, letterSpacing: '0.15em', fontFamily: 'Rajdhani, sans-serif', background: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: 4 }}>{vehicle.plate}</div>
+        <div style={{ position: 'absolute', top: 8, right: 8 }}><StatusBadge status={vehicle.status} small /></div>
+        {/* Plaque immat style FR */}
+        {vehicle.plate && (
+          <div style={{ position: 'absolute', bottom: 8, left: 10, display: 'flex', alignItems: 'stretch', borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+            <div style={{ width: 7, background: '#1e3a8a' }} />
+            <div style={{ background: 'rgba(10,10,12,0.88)', padding: '2px 8px', fontSize: 11, color: '#fff', fontWeight: 700, letterSpacing: '0.12em', fontFamily: 'Rajdhani, sans-serif' }}>
+              {vehicle.plate}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div style={{ padding: '14px' }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: THEME.text.primary, marginBottom: 2, fontFamily: 'Rajdhani, sans-serif' }}>{vehicle.name}</div>
-        <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 12 }}>{vehicle.role} • {vehicle.year}</div>
+      <div style={{ padding: '14px 16px 12px' }}>
+        {/* Identité */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.02em' }}>{vehicle.name}</span>
+          <span style={{ fontSize: 11, color: THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', fontWeight: 600 }}>{vehicle.year || ''}</span>
+        </div>
+        {vehicle.role && <div style={{ fontSize: 11, color: THEME.text.muted, marginTop: 1 }}>{vehicle.role}</div>}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 10px' }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 2 }}>KILOMÉTRAGE</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>
-              <EditableKm vehicle={vehicle} />
-            </div>
-          </div>
-          <div style={{ background: ctBg, borderRadius: 8, padding: '8px 10px' }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 2 }}>PROCHAIN CT</div>
-            <div style={{ fontSize: 12, fontWeight: 800, fontFamily: 'Rajdhani', color: ctColor }}>
-              {vehicle.next_ct
-                ? <>{new Date(vehicle.next_ct).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
-                    {ctDays < 0 && <span style={{ display: 'block', fontSize: 10 }}>dépassé de {Math.abs(ctDays)} j</span>}
-                  </>
-                : '—'}
-            </div>
-          </div>
+        {/* Compteur : la donnée héros */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '12px 0 10px' }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            <EditableKm vehicle={vehicle} style={{ borderBottom: 'none' }} inputWidth={130} />
+          </span>
         </div>
 
-        {/* Prochaine révision : vrai seuil, jamais "0 km" */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: THEME.text.muted, padding: '8px 10px', background: revInfo?.overdue ? THEME.accent.redDim : 'rgba(255,255,255,0.03)', borderRadius: 8, marginBottom: 8 }}>
-          <span>Prochaine révision</span>
-          {revInfo ? (
-            <span style={{ fontWeight: 700, color: revInfo.overdue ? THEME.accent.red : THEME.text.secondary, textAlign: 'right' }}>
-              {revInfo.overdue ? revInfo.sub : revInfo.sub}
-            </span>
-          ) : (
-            <span style={{ fontStyle: 'italic', color: THEME.text.muted }}>Non planifiée</span>
-          )}
+        {/* Échéances : lignes fines, pas de boîtes */}
+        <div style={{ borderTop: `1px solid ${THEME.border}` }}>
+          <DeadlineRow
+            dotColor={ctColor}
+            label="Contrôle technique"
+            value={vehicle.next_ct ? new Date(vehicle.next_ct).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+            valueColor={ctColor}
+            sub={ctDays !== null ? formatDeadline(ctDays).text : null}
+          />
+          <DeadlineRow
+            dotColor={revInfo ? (revInfo.overdue ? THEME.accent.red : THEME.accent.blue) : THEME.text.muted}
+            label="Révision"
+            value={revInfo ? (revInfo.overdue ? 'Dépassée' : revInfo.label) : 'Non planifiée'}
+            valueColor={revInfo?.overdue ? THEME.accent.red : revInfo ? THEME.text.primary : THEME.text.muted}
+            sub={revInfo?.sub}
+          />
         </div>
 
-        {/* Dernière intervention + coût année */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, paddingTop: 8, borderTop: `1px solid ${THEME.border}` }}>
-          <span style={{ color: THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+        {/* Pied : dernière intervention + coût année */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 9, borderTop: `1px solid ${THEME.border}`, gap: 10 }}>
+          <span style={{ fontSize: 11, color: THEME.text.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {lastIntervention
-              ? `🔧 ${lastIntervention.label} · ${new Date(lastIntervention.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}`
+              ? `${lastIntervention.label} · ${new Date(lastIntervention.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}`
               : 'Aucune intervention'}
           </span>
-          <span style={{ fontWeight: 800, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', fontSize: 13 }}>
-            {cost.toLocaleString('fr-FR')} € <span style={{ fontSize: 9, color: THEME.text.muted, fontWeight: 400 }}>/ {new Date().getFullYear()}</span>
+          <span style={{ fontWeight: 700, color: cost > 0 ? THEME.accent.orange : THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', fontSize: 14, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {cost.toLocaleString('fr-FR')} €
           </span>
         </div>
       </div>
@@ -409,45 +483,48 @@ function VehicleDetail({ vehicle, onBack }) {
           </div>
         )}
 
-        {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-          <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Kilométrage</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani' }}>
-              <EditableKm vehicle={vehicle} inputWidth={130} />
+        {/* Bandeau telemetry : mêmes readouts que la vue flotte */}
+        <div style={{
+          display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', marginBottom: 20,
+          background: 'linear-gradient(90deg, rgba(240,120,20,0.06), transparent 60%)',
+          border: `1px solid ${THEME.border}`, borderRadius: 12, overflow: 'hidden',
+        }}>
+          <div style={{ width: 4, background: THEME.accent.orange, flexShrink: 0 }} />
+          {[
+            {
+              label: 'Kilométrage',
+              node: <EditableKm vehicle={vehicle} inputWidth={130} style={{ borderBottom: 'none' }} />,
+              color: THEME.text.primary,
+            },
+            {
+              label: 'Prochain CT',
+              node: vehicle.next_ct ? new Date(vehicle.next_ct).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—',
+              color: ctDays === null ? THEME.text.muted : ctDays < 0 ? THEME.accent.red : ctDays < 30 ? THEME.accent.yellow : THEME.accent.green,
+              sub: ctDays !== null ? formatDeadline(ctDays).text : null,
+            },
+            {
+              label: 'Révision',
+              node: revInfo ? (revInfo.overdue ? 'Dépassée' : revInfo.label) : 'Non planifiée',
+              color: revInfo?.overdue ? THEME.accent.red : revInfo ? THEME.accent.blue : THEME.text.muted,
+              sub: revInfo?.sub,
+            },
+            {
+              label: 'Assurance',
+              node: vehicle.date_assurance ? new Date(vehicle.date_assurance).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—',
+              color: assuranceDays === null ? THEME.text.muted : assuranceDays < 0 ? THEME.accent.red : assuranceDays < 30 ? THEME.accent.yellow : THEME.text.primary,
+              sub: assuranceDays !== null && assuranceDays < 60 ? formatDeadline(assuranceDays).text : null,
+            },
+          ].map((r, i) => (
+            <div key={r.label} style={{
+              padding: '12px 20px', minWidth: isMobile ? '45%' : 0, flex: 1,
+              borderLeft: i > 0 && !isMobile ? `1px solid ${THEME.border}` : 'none',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            }}>
+              <div style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 2 }}>{r.label}</div>
+              <div style={{ fontSize: 21, fontWeight: 700, color: r.color, fontFamily: 'Rajdhani, sans-serif', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>{r.node}</div>
+              {r.sub && <div style={{ fontSize: 11, color: r.color === THEME.accent.red ? THEME.accent.red : THEME.text.muted, marginTop: 1 }}>{r.sub}</div>}
             </div>
-          </Card>
-          <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Prochain CT</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Rajdhani', color: ctDays === null ? THEME.text.muted : ctDays < 0 ? THEME.accent.red : ctDays < 30 ? THEME.accent.yellow : THEME.accent.green }}>
-              {vehicle.next_ct ? new Date(vehicle.next_ct).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
-            </div>
-            {ctDays !== null && (
-              <div style={{ fontSize: 11, color: ctDays < 0 ? THEME.accent.red : THEME.text.muted, marginTop: 2, fontWeight: ctDays < 0 ? 700 : 400 }}>
-                {formatDeadline(ctDays).text}
-              </div>
-            )}
-          </Card>
-          <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Prochaine révision</div>
-            {revInfo ? (
-              <>
-                <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Rajdhani', color: revInfo.overdue ? THEME.accent.red : THEME.accent.blue }}>{revInfo.label}</div>
-                <div style={{ fontSize: 11, color: revInfo.overdue ? THEME.accent.red : THEME.text.muted, marginTop: 2, fontWeight: revInfo.overdue ? 700 : 400 }}>{revInfo.sub}</div>
-              </>
-            ) : (
-              <div style={{ fontSize: 14, color: THEME.text.muted, fontStyle: 'italic' }}>Non planifiée</div>
-            )}
-          </Card>
-          <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 10, color: THEME.text.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Assurance</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Rajdhani', color: assuranceDays === null ? THEME.text.muted : assuranceDays < 0 ? THEME.accent.red : assuranceDays < 30 ? THEME.accent.yellow : THEME.text.primary }}>
-              {vehicle.date_assurance ? new Date(vehicle.date_assurance).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
-            </div>
-            {assuranceDays !== null && assuranceDays < 60 && (
-              <div style={{ fontSize: 11, color: assuranceDays < 0 ? THEME.accent.red : THEME.accent.yellow, marginTop: 2, fontWeight: 700 }}>{formatDeadline(assuranceDays).text}</div>
-            )}
-          </Card>
+          ))}
         </div>
 
         {/* Coûts par année */}
