@@ -10,7 +10,7 @@ export function useVehicles() {
   const fetchData = async () => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select(`*, maintenance(*), fiches(*, fiche_taches(*)), vehicle_parts(*)`)
+      .select(`*, maintenance(*), fiches(*, fiche_taches(*), fiche_pieces(*)), vehicle_parts(*)`)
       .order('id');
 
     if (!error && data) {
@@ -19,6 +19,7 @@ export function useVehicles() {
           .map(f => ({
             ...f,
             taches: (f.fiche_taches ?? []).sort((a, b) => (a.position - b.position) || (a.id - b.id)),
+            pieces_utilisees: (f.fiche_pieces ?? []).filter(fp => fp.qty_utilisee > 0),
           }))
           .sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation));
         return {
@@ -51,6 +52,7 @@ export function useVehicles() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fiches' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fiche_taches' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_parts' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fiche_pieces' }, fetchData)
       .subscribe();
 
     return () => {

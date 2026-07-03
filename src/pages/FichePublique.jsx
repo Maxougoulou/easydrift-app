@@ -52,6 +52,14 @@ export function FichePublique({ token }) {
     setShowKmEdit(false);
   };
 
+  // Le mécano déclare une pièce utilisée (+1) ou annule (-1)
+  const usePiece = async (piece, delta) => {
+    const { data: res } = await supabase.rpc('fiche_publique_utiliser_piece', {
+      p_token: token, p_part_id: piece.id, p_delta: delta,
+    });
+    if (res?.ok) await load();
+  };
+
   // Upload photo par le mécano (bucket public, dossier taches/ autorisé pour anon)
   const uploadTachePhoto = async (tache, file) => {
     if (!file) return;
@@ -117,31 +125,91 @@ export function FichePublique({ token }) {
             💬 {fiche.notes}
           </div>
         )}
-        {/* Pièces en rab fournies avec le véhicule */}
+        {/* Pièces en rab fournies avec le véhicule — le mécano coche ce qu'il utilise */}
         {pieces.length > 0 && (
           <div style={{ padding: '12px 18px', borderTop: `1px solid ${THEME.border}`, background: `${THEME.accent.green}06` }}>
-            <div style={{ fontSize: 10, color: THEME.accent.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-              📦 Pièces fournies avec le véhicule — rien à commander
+            <div style={{ fontSize: 10, color: THEME.accent.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              📦 Pièces fournies avec le véhicule
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {!readOnly && (
+              <div style={{ fontSize: 11, color: THEME.text.muted, marginBottom: 10 }}>
+                Coche ce que tu utilises — la commande à passer s'affiche en dessous.
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pieces.map(p => {
-                const epuise = (p.qty ?? 1) === 0;
-                const aRecommander = p.reorder || epuise;
+                const stock = p.qty ?? 1;
+                const used = p.used ?? 0;
+                const epuise = stock === 0;
                 return (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 28 }}>{p.qty ?? 1}×</span>
-                    <span style={{ color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
-                    {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted }}>réf. {p.reference}</span>}
-                    {aRecommander && (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 4, background: THEME.accent.yellowDim, color: THEME.accent.yellow }}>
-                        ⚠ À recommander{epuise ? ' — stock épuisé' : ''}
-                      </span>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: `1px solid ${used > 0 ? THEME.accent.orange + '44' : THEME.border}` }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 40 }}>
+                      {stock} <span style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 400 }}>en stock</span>
+                    </span>
+                    <div style={{ flex: 1, minWidth: 140 }}>
+                      <span style={{ color: THEME.text.primary, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+                      {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 6 }}>réf. {p.reference}</span>}
+                      {p.notes && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>{p.notes}</div>}
+                    </div>
+                    {!readOnly && (
+                      epuise && used === 0 ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: THEME.accent.red }}>Pas en stock</span>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          {used > 0 && (
+                            <>
+                              <button onClick={() => usePiece(p, -1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: THEME.text.secondary, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 18, textAlign: 'center' }}>{used}</span>
+                            </>
+                          )}
+                          <button
+                            onClick={() => usePiece(p, +1)}
+                            disabled={stock <= 0}
+                            style={{
+                              padding: '8px 12px', borderRadius: 8, border: 'none',
+                              background: stock > 0 ? THEME.accent.orange : 'rgba(255,255,255,0.06)',
+                              color: stock > 0 ? '#fff' : THEME.text.muted,
+                              fontSize: 12, fontWeight: 700, cursor: stock > 0 ? 'pointer' : 'not-allowed',
+                              fontFamily: 'inherit', whiteSpace: 'nowrap',
+                            }}
+                          >{used > 0 ? '+1' : 'J\'en utilise 1'}</button>
+                        </div>
+                      )
                     )}
-                    {p.notes && <span style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>— {p.notes}</span>}
+                    {readOnly && used > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: THEME.accent.orange }}>{used} utilisée{used > 1 ? 's' : ''}</span>
+                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Consigne de commande : 1 utilisée = 1 commandée, ×2 si pas en stock */}
+            {(() => {
+              const lignes = [];
+              pieces.forEach(p => {
+                const stock = p.qty ?? 1;
+                const used = p.used ?? 0;
+                if (used > 0) {
+                  lignes.push({ key: `u-${p.id}`, text: `${used}× ${p.name}${p.reference ? ` (réf. ${p.reference})` : ''}` });
+                } else if (stock === 0) {
+                  lignes.push({ key: `z-${p.id}`, text: `${p.name} — pas en stock : si tu dois la changer, commandes-en 2 (une à monter + une de rab)` });
+                } else if (p.reorder) {
+                  lignes.push({ key: `r-${p.id}`, text: `${p.name}${p.reference ? ` (réf. ${p.reference})` : ''} — demandé par EASYDRIFT` });
+                }
+              });
+              if (!lignes.length) return null;
+              return (
+                <div style={{ marginTop: 12, padding: '12px 14px', borderRadius: 10, background: THEME.accent.yellowDim, border: `1px solid ${THEME.accent.yellow}44` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: THEME.accent.yellow, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                    🛒 À commander pour EASYDRIFT
+                  </div>
+                  {lignes.map(l => (
+                    <div key={l.key} style={{ fontSize: 13, color: THEME.text.primary, padding: '2px 0', fontWeight: 600 }}>• {l.text}</div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

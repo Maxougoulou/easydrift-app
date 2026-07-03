@@ -589,7 +589,7 @@ function VehicleDetail({ vehicle, onBack }) {
             {journal.map((item, idx) => (
               item.kind === 'maintenance'
                 ? <MaintenanceRow key={`m-${item.data.id}`} entry={item.data} team={team} isLast={idx === journal.length - 1} onDelete={deleteMaintenance} />
-                : <FicheJournalRow key={`f-${item.data.id}`} fiche={item.data} isLast={idx === journal.length - 1} onCloturer={() => setFicheACloturer(item.data)} onDelete={deleteFiche} onPdf={() => openFichePdf(item.data, vehicle, item.data.taches ?? [])} />
+                : <FicheJournalRow key={`f-${item.data.id}`} fiche={item.data} vehicle={vehicle} isLast={idx === journal.length - 1} onCloturer={() => setFicheACloturer(item.data)} onDelete={deleteFiche} onPdf={() => openFichePdf(item.data, vehicle, item.data.taches ?? [])} />
             ))}
             {journal.length === 0 && (
               <div style={{ textAlign: 'center', padding: 40, color: THEME.text.muted }}>
@@ -610,7 +610,7 @@ function VehicleDetail({ vehicle, onBack }) {
         {activeTab === 'fiches' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(vehicle.fiches ?? []).map(f => (
-              <FicheJournalRow key={f.id} fiche={f} standalone onCloturer={() => setFicheACloturer(f)} onDelete={deleteFiche} onPdf={() => openFichePdf(f, vehicle, f.taches ?? [])} />
+              <FicheJournalRow key={f.id} fiche={f} vehicle={vehicle} standalone onCloturer={() => setFicheACloturer(f)} onDelete={deleteFiche} onPdf={() => openFichePdf(f, vehicle, f.taches ?? [])} />
             ))}
             {(vehicle.fiches ?? []).length === 0 && (
               <div style={{ textAlign: 'center', padding: 40, color: THEME.text.muted }}>
@@ -648,7 +648,7 @@ function VehicleDetail({ vehicle, onBack }) {
 
 // ─── FICHE DANS LE JOURNAL ───────────────────────────────────────────────────
 
-function FicheJournalRow({ fiche, isLast, standalone, onCloturer, onDelete, onPdf }) {
+function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDelete, onPdf }) {
   // Compacte par défaut ; seule une fiche encore ouverte s'affiche dépliée
   const isOpen = fiche.statut === 'envoyée';
   const [expanded, setExpanded] = useState(isOpen);
@@ -716,6 +716,23 @@ function FicheJournalRow({ fiche, isLast, standalone, onCloturer, onDelete, onPd
               </div>
             ))}
           </div>
+
+          {/* Pièces utilisées par le mécano */}
+          {(fiche.pieces_utilisees ?? []).length > 0 && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: THEME.accent.yellowDim, border: `1px solid ${THEME.accent.yellow}33` }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: THEME.accent.yellow, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                🛒 Pièces utilisées — à recommander
+              </div>
+              {fiche.pieces_utilisees.map(fp => {
+                const part = (vehicle?.parts ?? []).find(p => p.id === fp.part_id);
+                return (
+                  <div key={fp.id} style={{ fontSize: 12, color: THEME.text.primary, fontWeight: 600, padding: '1px 0' }}>
+                    • {fp.qty_utilisee}× {part?.name ?? `Pièce #${fp.part_id}`}{part?.reference ? ` (réf. ${part.reference})` : ''}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {fiche.notes && <p style={{ margin: '8px 0 0', fontSize: 12, color: THEME.text.muted, fontStyle: 'italic' }}>{fiche.notes}</p>}
 

@@ -120,7 +120,7 @@ export async function openFichePdf(fiche, vehicle, taches) {
           ${p.notes ? `<span class="piece-notes">— ${p.notes}</span>` : ''}
         </div>
       `;}).join('')}
-      <div class="pieces-hint">Ces pièces accompagnent le véhicule : rien à commander.</div>
+      <div class="pieces-hint">Ces pièces accompagnent le véhicule. Coche en ligne celles que tu utilises : la commande à passer pour reconstituer le stock EASYDRIFT s'affiche automatiquement (1 utilisée = 1 commandée, ×2 si plus en stock).</div>
     </div>
   ` : ''}
 
