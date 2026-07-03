@@ -8,7 +8,20 @@ import { toast } from '../lib/toast';
 export function useFiches() {
   const [saving, setSaving] = useState(false);
 
-  // Créer une fiche + ses tâches, statut 'envoyée' directement
+  // Upload d'une photo dans le bucket, retourne l'URL publique
+  const uploadPhoto = async (file, folder = 'taches') => {
+    const safeName = file.name
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safeName}`;
+    const { error } = await supabase.storage.from('vehicle-files').upload(path, file);
+    if (error) throw error;
+    const { data: pub } = supabase.storage.from('vehicle-files').getPublicUrl(path);
+    return pub.publicUrl;
+  };
+
+  // Créer une fiche + ses tâches (avec photos optionnelles), statut 'envoyée'
+  // taches : [{ description, photoFile? }]
   const createFiche = async ({ vehicleId, titre, km, notes, taches }) => {
     setSaving(true);
     try {
@@ -26,14 +39,22 @@ export function useFiches() {
       if (error) throw error;
 
       if (taches.length > 0) {
-        const { error: tErr } = await supabase.from('fiche_taches').insert(
-          taches.map((t, i) => ({
+        // Upload des photos en parallèle
+        const rows = await Promise.all(taches.map(async (t, i) => {
+          let photoUrl = null;
+          if (t.photoFile) {
+            try { photoUrl = await uploadPhoto(t.photoFile); }
+            catch (e) { console.error('[fiche] upload photo:', e); }
+          }
+          return {
             fiche_id: fiche.id,
-            description: t,
+            description: t.description,
             origine: 'demande',
             position: i,
-          }))
-        );
+            photo_url: photoUrl,
+          };
+        }));
+        const { error: tErr } = await supabase.from('fiche_taches').insert(rows);
         if (tErr) throw tErr;
       }
 

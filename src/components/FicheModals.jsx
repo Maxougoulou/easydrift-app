@@ -127,13 +127,19 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
   const [checked, setChecked] = useState(() => new Set());
   const [customTasks, setCustomTasks] = useState([]);
   const [customInput, setCustomInput] = useState('');
+  const [photos, setPhotos] = useState({});  // description → File
   const [createdFiche, setCreatedFiche] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const toggle = (item) => {
     setChecked(prev => {
       const next = new Set(prev);
-      next.has(item) ? next.delete(item) : next.add(item);
+      if (next.has(item)) {
+        next.delete(item);
+        setPhotos(p => { const { [item]: _, ...rest } = p; return rest; });
+      } else {
+        next.add(item);
+      }
       return next;
     });
   };
@@ -145,6 +151,10 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
     setCustomInput('');
   };
 
+  const setPhoto = (desc, file) => {
+    setPhotos(p => file ? { ...p, [desc]: file } : (() => { const { [desc]: _, ...rest } = p; return rest; })());
+  };
+
   const allTasks = [...CHECKLIST_PISTE.filter(i => checked.has(i)), ...customTasks];
 
   const handleCreate = async () => {
@@ -154,10 +164,31 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
       titre: titre.trim() || 'Fiche d\'intervention',
       km: parseInt(km) || null,
       notes: notes.trim(),
-      taches: allTasks,
+      taches: allTasks.map(desc => ({ description: desc, photoFile: photos[desc] ?? null })),
     });
     if (fiche) setCreatedFiche(fiche);
   };
+
+  // Petit bouton 📷 : label + input file caché (fonction de rendu, pas un composant)
+  const renderPhotoBtn = (desc) => (
+    <label
+      onClick={e => e.stopPropagation()}
+      title={photos[desc] ? 'Photo jointe — cliquer pour changer' : 'Joindre une photo'}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+        padding: '3px 8px', borderRadius: 6, flexShrink: 0,
+        background: photos[desc] ? THEME.accent.orangeDim : 'rgba(255,255,255,0.05)',
+        border: `1px solid ${photos[desc] ? THEME.accent.orange + '55' : THEME.border}`,
+        fontSize: 12, color: photos[desc] ? THEME.accent.orange : THEME.text.muted,
+      }}
+    >
+      📷{photos[desc] ? ' ✓' : ''}
+      <input
+        type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        onChange={e => setPhoto(desc, e.target.files?.[0] ?? null)}
+      />
+    </label>
+  );
 
   const copyLink = () => {
     navigator.clipboard.writeText(ficheUrl(createdFiche));
@@ -187,7 +218,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               <Btn onClick={copyLink}>{copied ? '✓ Copié !' : '📋 Copier le lien'}</Btn>
               <Btn variant="secondary" onClick={() => openFichePdf(
                 createdFiche, vehicle,
-                allTasks.map(d => ({ description: d, origine: 'demande' }))
+                allTasks.map(desc => ({ description: desc, origine: 'demande' }))
               )}>📄 Télécharger le PDF</Btn>
             </div>
             <div style={{ marginTop: 18 }}>
@@ -221,12 +252,11 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               {CHECKLIST_PISTE.map(item => {
                 const isOn = checked.has(item);
                 return (
-                  <button key={item} onClick={() => toggle(item)} style={{
+                  <div key={item} onClick={() => toggle(item)} style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                    borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    borderRadius: 8, cursor: 'pointer',
                     border: `1px solid ${isOn ? THEME.accent.orange + '55' : THEME.border}`,
                     background: isOn ? THEME.accent.orangeDim : 'rgba(255,255,255,0.02)',
-                    fontFamily: 'inherit',
                   }}>
                     <span style={{
                       width: 18, height: 18, borderRadius: 5, flexShrink: 0,
@@ -235,8 +265,9 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 12, fontWeight: 900,
                     }}>{isOn ? '✓' : ''}</span>
-                    <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary }}>{item}</span>
-                  </button>
+                    <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary, flex: 1 }}>{item}</span>
+                    {isOn && renderPhotoBtn(item)}
+                  </div>
                 );
               })}
             </div>
@@ -247,7 +278,8 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
                 {customTasks.map((t, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: THEME.accent.orangeDim, border: `1px solid ${THEME.accent.orange}55` }}>
                     <span style={{ fontSize: 13, color: THEME.text.primary, flex: 1 }}>{t}</span>
-                    <button onClick={() => setCustomTasks(ts => ts.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 15 }}>×</button>
+                    {renderPhotoBtn(t)}
+                    <button onClick={() => { setCustomTasks(ts => ts.filter((_, j) => j !== i)); setPhoto(t, null); }} style={{ background: 'none', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 15 }}>×</button>
                   </div>
                 ))}
               </div>

@@ -10,7 +10,7 @@ export function useVehicles() {
   const fetchData = async () => {
     const { data, error } = await supabase
       .from('vehicles')
-      .select(`*, maintenance(*), fiches(*, fiche_taches(*))`)
+      .select(`*, maintenance(*), fiches(*, fiche_taches(*)), vehicle_parts(*)`)
       .order('id');
 
     if (!error && data) {
@@ -28,6 +28,7 @@ export function useVehicles() {
           nextRevision: { mileage: v.next_revision_mileage, date: v.next_revision_date },
           maintenance: (v.maintenance ?? []).sort((a, b) => new Date(b.date) - new Date(a.date)),
           fiches,
+          parts: (v.vehicle_parts ?? []).sort((a, b) => new Date(b.date_pose ?? b.created_at) - new Date(a.date_pose ?? a.created_at)),
           status: computeVehicleStatus({ ...v, fiches }),  // statut TOUJOURS calculé
         };
       });
@@ -49,6 +50,7 @@ export function useVehicles() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fiches' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fiche_taches' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_parts' }, fetchData)
       .subscribe();
 
     return () => {
@@ -106,7 +108,22 @@ export function useVehicles() {
     toast.success('Kilométrage mis à jour');
   };
 
-  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, refetch: fetchData };
+  // Pièces montées sur le véhicule
+  const addPart = async (vehicleId, part) => {
+    const { error } = await supabase.from('vehicle_parts').insert({ vehicle_id: vehicleId, ...part });
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Pièce ajoutée');
+  };
+
+  const deletePart = async (id) => {
+    const { error } = await supabase.from('vehicle_parts').delete().eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+    toast.success('Pièce supprimée');
+  };
+
+  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, addPart, deletePart, refetch: fetchData };
 }
 
 export function useVehicleDocs(vehicleId) {

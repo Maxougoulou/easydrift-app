@@ -52,6 +52,20 @@ export function FichePublique({ token }) {
     setShowKmEdit(false);
   };
 
+  // Upload photo par le mécano (bucket public, dossier taches/ autorisé pour anon)
+  const uploadTachePhoto = async (tache, file) => {
+    if (!file) return;
+    const safeName = file.name
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `taches/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safeName}`;
+    const { error } = await supabase.storage.from('vehicle-files').upload(path, file);
+    if (error) { alert('Erreur envoi photo : ' + error.message); return; }
+    const { data: pub } = supabase.storage.from('vehicle-files').getPublicUrl(path);
+    await supabase.rpc('fiche_publique_tache_photo', { p_token: token, p_tache_id: tache.id, p_photo_url: pub.publicUrl });
+    await load();
+  };
+
   const terminer = async () => {
     setFinishing(true);
     await supabase.rpc('fiche_publique_terminer', { p_token: token });
@@ -125,7 +139,7 @@ export function FichePublique({ token }) {
       <SectionTitle>Travaux demandés</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         {tachesDemandees.map(t => (
-          <TacheCard key={t.id} tache={t} readOnly={readOnly} onToggle={toggleTache} />
+          <TacheCard key={t.id} tache={t} readOnly={readOnly} onToggle={toggleTache} onPhoto={uploadTachePhoto} />
         ))}
       </div>
 
@@ -135,7 +149,7 @@ export function FichePublique({ token }) {
           <SectionTitle>Interventions supplémentaires</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
             {tachesMecano.map(t => (
-              <TacheCard key={t.id} tache={t} readOnly={readOnly} onToggle={toggleTache} isMecano />
+              <TacheCard key={t.id} tache={t} readOnly={readOnly} onToggle={toggleTache} onPhoto={uploadTachePhoto} isMecano />
             ))}
           </div>
         </>
@@ -217,13 +231,21 @@ function SectionTitle({ children }) {
   return <div style={{ fontSize: 11, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{children}</div>;
 }
 
-function TacheCard({ tache, readOnly, onToggle, isMecano }) {
+function TacheCard({ tache, readOnly, onToggle, onPhoto, isMecano }) {
   const [showComment, setShowComment] = useState(false);
   const [comment, setComment] = useState(tache.commentaire ?? '');
+  const [uploading, setUploading] = useState(false);
 
   const saveComment = () => {
     onToggle(tache, tache.fait, comment);
     setShowComment(false);
+  };
+
+  const handlePhoto = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    await onPhoto(tache, file);
+    setUploading(false);
   };
 
   return (
@@ -262,10 +284,20 @@ function TacheCard({ tache, readOnly, onToggle, isMecano }) {
           )}
         </div>
       </button>
+
+      {/* Photo jointe */}
+      {tache.photo_url && (
+        <div style={{ padding: '0 16px 10px 56px' }}>
+          <a href={tache.photo_url} target="_blank" rel="noopener noreferrer">
+            <img src={tache.photo_url} alt="Photo tâche" style={{ maxWidth: 140, maxHeight: 100, borderRadius: 8, border: `1px solid ${THEME.border}`, display: 'block' }} />
+          </a>
+        </div>
+      )}
+
       {!readOnly && (
-        <div style={{ padding: '0 16px 12px 56px' }}>
+        <div style={{ padding: '0 16px 12px 56px', display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
           {showComment ? (
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flex: 1, minWidth: 200 }}>
               <input
                 autoFocus
                 style={{ flex: 1, background: THEME.bg.input, border: `1px solid ${THEME.border}`, borderRadius: 8, padding: '8px 12px', color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
@@ -281,6 +313,14 @@ function TacheCard({ tache, readOnly, onToggle, isMecano }) {
               {tache.commentaire ? '✎ Modifier le commentaire' : '+ Commentaire'}
             </button>
           )}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: THEME.text.muted }}>
+            {uploading ? 'Envoi…' : tache.photo_url ? '📷 Changer la photo' : '📷 Photo'}
+            <input
+              type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+              onChange={e => handlePhoto(e.target.files?.[0])}
+              disabled={uploading}
+            />
+          </label>
         </div>
       )}
     </div>
