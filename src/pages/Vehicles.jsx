@@ -761,21 +761,14 @@ function FicheJournalRow({ fiche, isLast, standalone, onCloturer, onDelete, onPd
 // ─── ONGLET PIÈCES ───────────────────────────────────────────────────────────
 
 function PartsTab({ vehicle }) {
-  const { addPart, deletePart } = useAppContext();
+  const { addPart, updatePart, deletePart } = useAppContext();
   const [showAdd, setShowAdd] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [form, setForm] = useState({ name: '', reference: '', date_pose: '', km_pose: '', notes: '' });
+  const [form, setForm] = useState({ name: '', reference: '', qty: 1, notes: '' });
   const [saving, setSaving] = useState(false);
 
   const parts = vehicle.parts ?? [];
-
-  // Pièces mentionnées dans l'historique maintenance (lecture seule)
-  const historyParts = useMemo(() =>
-    (vehicle.maintenance ?? [])
-      .flatMap(m => (m.parts ?? []).map(p => ({ part: p, date: m.date, km: m.km })))
-      .filter(p => p.part),
-    [vehicle]
-  );
+  const totalPieces = parts.reduce((s, p) => s + (p.qty ?? 1), 0);
 
   const inp = { width: '100%', background: THEME.bg.input, border: `1px solid ${THEME.border}`, borderRadius: 8, padding: '8px 12px', color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
   const lbl = { fontSize: 10, color: THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 4 };
@@ -787,121 +780,104 @@ function PartsTab({ vehicle }) {
       await addPart(vehicle.id, {
         name: form.name.trim(),
         reference: form.reference.trim() || null,
-        date_pose: form.date_pose || null,
-        km_pose: parseInt(form.km_pose) || null,
+        qty: Math.max(1, parseInt(form.qty) || 1),
         notes: form.notes.trim() || null,
       });
-      setForm({ name: '', reference: '', date_pose: '', km_pose: '', notes: '' });
+      setForm({ name: '', reference: '', qty: 1, notes: '' });
       setShowAdd(false);
     } finally {
       setSaving(false);
     }
   };
 
+  const changeQty = (p, delta) => {
+    const next = (p.qty ?? 1) + delta;
+    if (next <= 0) { setConfirmDelete(p.id); return; }
+    updatePart(p.id, { qty: next });
+  };
+
+  const qtyBtn = {
+    width: 24, height: 24, borderRadius: 6, border: `1px solid ${THEME.border}`,
+    background: 'rgba(255,255,255,0.05)', color: THEME.text.secondary,
+    fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 12, color: THEME.text.muted }}>Pièces montées sur le véhicule — cardans, plaquettes, amortos…</span>
-        <Btn size="sm" onClick={() => setShowAdd(s => !s)}>{showAdd ? 'Fermer' : '+ Ajouter une pièce'}</Btn>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: THEME.text.muted }}>
+          Pièces en rab qui suivent le véhicule — le mécano les voit sur la fiche, rien à commander.
+          {totalPieces > 0 && <strong style={{ color: THEME.text.secondary }}> {totalPieces} pièce{totalPieces > 1 ? 's' : ''} en stock.</strong>}
+        </span>
+        <Btn size="sm" onClick={() => setShowAdd(s => !s)}>{showAdd ? 'Fermer' : '+ Ajouter au stock'}</Btn>
       </div>
 
       {/* Formulaire inline */}
       {showAdd && (
         <div style={{ background: THEME.bg.card, border: `1px solid ${THEME.accent.orange}33`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 70px', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={lbl}>Pièce *</label>
-              <input style={inp} placeholder="Plaquettes AV Ferodo DS2500" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+              <input style={inp} placeholder="Plaquettes AV Ferodo DS2500" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }} />
             </div>
             <div>
               <label style={lbl}>Référence</label>
               <input style={inp} placeholder="FCP1667H" value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} />
             </div>
+            <div>
+              <label style={lbl}>Qté</label>
+              <input type="number" min="1" style={inp} value={form.qty} onChange={e => setForm(f => ({ ...f, qty: e.target.value }))} />
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <label style={lbl}>Posée le</label>
-              <input type="date" style={inp} value={form.date_pose} onChange={e => setForm(f => ({ ...f, date_pose: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>À (km)</label>
-              <input type="number" style={inp} placeholder="84250" value={form.km_pose} onChange={e => setForm(f => ({ ...f, km_pose: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Notes</label>
-              <input style={inp} placeholder="À surveiller après 10 sessions" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={lbl}>Notes</label>
+            <input style={inp} placeholder="Dans le coffre / chez Alex / à monter en priorité…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Btn size="sm" onClick={handleAdd} disabled={!form.name.trim() || saving}>{saving ? 'Ajout…' : 'Ajouter'}</Btn>
+            <Btn size="sm" onClick={handleAdd} disabled={!form.name.trim() || saving}>{saving ? 'Ajout…' : 'Ajouter au stock'}</Btn>
           </div>
         </div>
       )}
 
-      {/* Liste des pièces */}
+      {/* Stock */}
       {parts.length === 0 && !showAdd && (
         <div style={{ textAlign: 'center', padding: '32px 0', color: THEME.text.muted }}>
-          <div style={{ fontSize: 30, marginBottom: 10 }}>⚙</div>
-          <div style={{ fontSize: 13 }}>Aucune pièce suivie — ajoute cardans, plaquettes, etc.</div>
+          <div style={{ fontSize: 30, marginBottom: 10 }}>📦</div>
+          <div style={{ fontSize: 13, marginBottom: 4 }}>Aucune pièce en stock pour ce véhicule</div>
+          <div style={{ fontSize: 11 }}>Ajoute les cardans, plaquettes, etc. que tu gardes en rab</div>
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {parts.map(p => {
-          const kmSincePose = p.km_pose ? vehicle.mileage - p.km_pose : null;
-          return (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, background: THEME.bg.card, border: `1px solid ${confirmDelete === p.id ? THEME.accent.red + '55' : THEME.border}` }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: THEME.accent.orange, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary }}>{p.name}</span>
-                  {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.05em' }}>réf. {p.reference}</span>}
-                </div>
-                {p.notes && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic', marginTop: 1 }}>{p.notes}</div>}
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                {p.date_pose && (
-                  <div style={{ fontSize: 11, color: THEME.text.secondary }}>
-                    posée le {new Date(p.date_pose).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })}
-                    {p.km_pose ? ` à ${p.km_pose.toLocaleString('fr-FR')} km` : ''}
-                  </div>
-                )}
-                {kmSincePose !== null && kmSincePose > 0 && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: THEME.accent.blue, fontFamily: 'Rajdhani, sans-serif' }}>
-                    {kmSincePose.toLocaleString('fr-FR')} km parcourus
-                  </div>
-                )}
-              </div>
-              {confirmDelete === p.id ? (
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  <button onClick={() => { deletePart(p.id); setConfirmDelete(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
-                  <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
-                </div>
-              ) : (
-                <button onClick={() => setConfirmDelete(p.id)} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}>×</button>
-              )}
+        {parts.map(p => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: THEME.bg.card, border: `1px solid ${confirmDelete === p.id ? THEME.accent.red + '55' : THEME.border}` }}>
+            {/* Quantité avec stepper */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => changeQty(p, -1)} style={qtyBtn} title="Utilisée / retirer une">−</button>
+              <span style={{ fontSize: 16, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 22, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                {p.qty ?? 1}
+              </span>
+              <button onClick={() => changeQty(p, +1)} style={qtyBtn} title="En ajouter une">+</button>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Pièces vues dans l'historique maintenance */}
-      {historyParts.length > 0 && (
-        <div style={{ marginTop: 22 }}>
-          <div style={{ fontSize: 11, color: THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-            Vu dans l'historique d'entretien
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {historyParts.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: `1px solid ${THEME.border}` }}>
-                <span style={{ flex: 1, fontSize: 12, color: THEME.text.secondary }}>{p.part}</span>
-                <span style={{ fontSize: 11, color: THEME.text.muted, whiteSpace: 'nowrap' }}>
-                  {new Date(p.date).toLocaleDateString('fr-FR')} · {p.km?.toLocaleString('fr-FR')} km
-                </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: THEME.text.primary }}>{p.name}</span>
+                {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.05em' }}>réf. {p.reference}</span>}
               </div>
-            ))}
+              {p.notes && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic', marginTop: 1 }}>{p.notes}</div>}
+            </div>
+            {confirmDelete === p.id ? (
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Retirer ?</span>
+                <button onClick={() => { deletePart(p.id); setConfirmDelete(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmDelete(p.id)} style={{ background: 'transparent', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}>×</button>
+            )}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

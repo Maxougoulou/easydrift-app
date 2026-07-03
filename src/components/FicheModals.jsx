@@ -30,6 +30,7 @@ export async function openFichePdf(fiche, vehicle, taches) {
   } catch { /* QR optionnel */ }
 
   const tachesDemandees = taches.filter(t => t.origine !== 'mecano');
+  const pieces = vehicle.parts ?? [];
   const dateStr = new Date(fiche.date_creation ?? Date.now()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const html = `<!DOCTYPE html>
@@ -55,6 +56,13 @@ export async function openFichePdf(fiche, vehicle, taches) {
   .task .desc { font-size: 13px; font-weight: 600; flex: 1; }
   .task .comment-line { border-bottom: 1px dotted #bbb; height: 20px; margin-top: 6px; }
   .notes-box { border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; margin-top: 8px; font-size: 12px; color: #444; background: #fafafa; }
+  .pieces-box { border: 1px solid #b7e4c7; border-radius: 8px; padding: 12px 16px; background: #f4fbf6; page-break-inside: avoid; }
+  .piece { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 13px; }
+  .piece-qty { font-weight: 800; color: #1a7f3c; min-width: 26px; }
+  .piece-name { font-weight: 600; }
+  .piece-ref { font-size: 11px; color: #777; }
+  .piece-notes { font-size: 11px; color: #777; font-style: italic; }
+  .pieces-hint { font-size: 11px; color: #1a7f3c; margin-top: 8px; font-weight: 600; }
   .qr-section { margin-top: 28px; border: 2px solid #F07814; border-radius: 10px; padding: 18px 22px; display: flex; gap: 22px; align-items: center; page-break-inside: avoid; }
   .qr-section img { width: 130px; height: 130px; }
   .qr-section .txt h3 { font-size: 15px; margin-bottom: 6px; }
@@ -93,6 +101,21 @@ export async function openFichePdf(fiche, vehicle, taches) {
   `).join('')}
 
   ${fiche.notes ? `<h2>Notes</h2><div class="notes-box">${fiche.notes}</div>` : ''}
+
+  ${pieces.length > 0 ? `
+    <h2>📦 Pièces fournies avec le véhicule</h2>
+    <div class="pieces-box">
+      ${pieces.map(p => `
+        <div class="piece">
+          <span class="piece-qty">${p.qty ?? 1}×</span>
+          <span class="piece-name">${p.name}</span>
+          ${p.reference ? `<span class="piece-ref">réf. ${p.reference}</span>` : ''}
+          ${p.notes ? `<span class="piece-notes">— ${p.notes}</span>` : ''}
+        </div>
+      `).join('')}
+      <div class="pieces-hint">Ces pièces accompagnent le véhicule : rien à commander.</div>
+    </div>
+  ` : ''}
 
   <div class="qr-section">
     ${qrDataUrl ? `<img src="${qrDataUrl}" alt="QR code" />` : ''}

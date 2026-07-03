@@ -89,7 +89,7 @@ export function FichePublique({ token }) {
     );
   }
 
-  const { fiche, vehicle, taches } = data;
+  const { fiche, vehicle, taches, pieces = [] } = data;
   const isClosed = fiche.statut === 'terminée';
   const isDone = fiche.travail_termine;
   const readOnly = isClosed;
@@ -115,6 +115,24 @@ export function FichePublique({ token }) {
         {fiche.notes && (
           <div style={{ padding: '10px 18px', borderTop: `1px solid ${THEME.border}`, fontSize: 13, color: THEME.text.secondary, fontStyle: 'italic' }}>
             💬 {fiche.notes}
+          </div>
+        )}
+        {/* Pièces en rab fournies avec le véhicule */}
+        {pieces.length > 0 && (
+          <div style={{ padding: '12px 18px', borderTop: `1px solid ${THEME.border}`, background: `${THEME.accent.green}06` }}>
+            <div style={{ fontSize: 10, color: THEME.accent.green, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              📦 Pièces fournies avec le véhicule — rien à commander
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {pieces.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 13 }}>
+                  <span style={{ fontWeight: 700, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 28 }}>{p.qty ?? 1}×</span>
+                  <span style={{ color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
+                  {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted }}>réf. {p.reference}</span>}
+                  {p.notes && <span style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>— {p.notes}</span>}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

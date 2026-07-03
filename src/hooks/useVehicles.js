@@ -28,7 +28,7 @@ export function useVehicles() {
           nextRevision: { mileage: v.next_revision_mileage, date: v.next_revision_date },
           maintenance: (v.maintenance ?? []).sort((a, b) => new Date(b.date) - new Date(a.date)),
           fiches,
-          parts: (v.vehicle_parts ?? []).sort((a, b) => new Date(b.date_pose ?? b.created_at) - new Date(a.date_pose ?? a.created_at)),
+          parts: (v.vehicle_parts ?? []).sort((a, b) => a.name.localeCompare(b.name)),
           status: computeVehicleStatus({ ...v, fiches }),  // statut TOUJOURS calculé
         };
       });
@@ -116,14 +116,20 @@ export function useVehicles() {
     toast.success('Pièce ajoutée');
   };
 
+  const updatePart = async (id, data) => {
+    const { error } = await supabase.from('vehicle_parts').update(data).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); throw error; }
+    await fetchData();
+  };
+
   const deletePart = async (id) => {
     const { error } = await supabase.from('vehicle_parts').delete().eq('id', id);
     if (error) { toast.error('Erreur', error.message); throw error; }
     await fetchData();
-    toast.success('Pièce supprimée');
+    toast.success('Pièce retirée du stock');
   };
 
-  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, addPart, deletePart, refetch: fetchData };
+  return { vehicles, loading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, addPart, updatePart, deletePart, refetch: fetchData };
 }
 
 export function useVehicleDocs(vehicleId) {
