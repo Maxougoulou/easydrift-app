@@ -20,6 +20,7 @@ export function useVehicles() {
             ...f,
             taches: (f.fiche_taches ?? []).sort((a, b) => (a.position - b.position) || (a.id - b.id)),
             pieces_utilisees: (f.fiche_pieces ?? []).filter(fp => fp.qty_utilisee > 0),
+            pieces_fournies: (f.fiche_pieces ?? []).filter(fp => (fp.qty_fournie ?? 0) > 0),
           }))
           .sort((a, b) => new Date(b.date_creation) - new Date(a.date_creation));
         return {

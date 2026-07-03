@@ -21,8 +21,8 @@ export function useFiches() {
   };
 
   // Créer une fiche + ses tâches (avec photos optionnelles), statut 'envoyée'
-  // taches : [{ description, photoFile? }]
-  const createFiche = async ({ vehicleId, titre, km, notes, taches }) => {
+  // taches : [{ description, photoFile? }] — pieces : [{ part_id, qty }]
+  const createFiche = async ({ vehicleId, titre, km, notes, taches, pieces = [] }) => {
     setSaving(true);
     try {
       const { data: fiche, error } = await supabase
@@ -56,6 +56,15 @@ export function useFiches() {
         }));
         const { error: tErr } = await supabase.from('fiche_taches').insert(rows);
         if (tErr) throw tErr;
+      }
+
+      // Pièces fournies avec le véhicule pour cette fiche
+      const fournies = pieces.filter(p => p.qty > 0);
+      if (fournies.length > 0) {
+        const { error: pErr } = await supabase.from('fiche_pieces').insert(
+          fournies.map(p => ({ fiche_id: fiche.id, part_id: p.part_id, qty_fournie: p.qty, qty_utilisee: 0 }))
+        );
+        if (pErr) throw pErr;
       }
 
       toast.success('Fiche créée et envoyée');

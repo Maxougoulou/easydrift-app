@@ -2,7 +2,6 @@ import { useState } from 'react';
 import QRCode from 'qrcode';
 import { THEME } from '../lib/theme';
 import { Btn } from './ui';
-import { useAppContext } from '../lib/AppContext';
 
 // Propositions pré-remplies "retour de piste" — décochées par défaut,
 // on coche ce qu'on veut inclure dans la fiche.
@@ -23,7 +22,8 @@ export function ficheUrl(fiche) {
 
 // ─── PDF (fenêtre print stylée + QR code vers la page mécano) ────────────────
 
-export async function openFichePdf(fiche, vehicle, taches) {
+// pieces : [{ name, reference, qty, reorder }] — les pièces FOURNIES avec le véhicule pour cette fiche
+export async function openFichePdf(fiche, vehicle, taches, pieces = []) {
   const url = ficheUrl(fiche);
   let qrDataUrl = '';
   try {
@@ -31,7 +31,6 @@ export async function openFichePdf(fiche, vehicle, taches) {
   } catch { /* QR optionnel */ }
 
   const tachesDemandees = taches.filter(t => t.origine !== 'mecano');
-  const pieces = vehicle.parts ?? [];
   const dateStr = new Date(fiche.date_creation ?? Date.now()).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const html = `<!DOCTYPE html>
@@ -108,19 +107,15 @@ export async function openFichePdf(fiche, vehicle, taches) {
   ${pieces.length > 0 ? `
     <h2>📦 Pièces fournies avec le véhicule</h2>
     <div class="pieces-box">
-      ${pieces.map(p => {
-        const epuise = (p.qty ?? 1) === 0;
-        const aRecommander = p.reorder || epuise;
-        return `
+      ${pieces.map(p => `
         <div class="piece">
-          <span class="piece-qty${epuise ? ' piece-qty-zero' : ''}">${p.qty ?? 1}×</span>
+          <span class="piece-qty">${p.qty ?? 1}×</span>
           <span class="piece-name">${p.name}</span>
           ${p.reference ? `<span class="piece-ref">réf. ${p.reference}</span>` : ''}
-          ${aRecommander ? `<span class="piece-reorder">⚠ À RECOMMANDER${epuise ? ' — stock épuisé' : ''}</span>` : ''}
-          ${p.notes ? `<span class="piece-notes">— ${p.notes}</span>` : ''}
+          ${p.reorder ? `<span class="piece-reorder">⚠ À RECOMMANDER</span>` : ''}
         </div>
-      `;}).join('')}
-      <div class="pieces-hint">Ces pièces accompagnent le véhicule. Coche en ligne celles que tu utilises : la commande à passer pour reconstituer le stock EASYDRIFT s'affiche automatiquement (1 utilisée = 1 commandée, ×2 si plus en stock).</div>
+      `).join('')}
+      <div class="pieces-hint">Ces pièces sont dans le véhicule. Coche en ligne celles que tu utilises : la commande à passer pour reconstituer le stock EASYDRIFT s'affiche automatiquement (1 utilisée = 1 commandée).</div>
     </div>
   ` : ''}
 
@@ -151,7 +146,6 @@ export async function openFichePdf(fiche, vehicle, taches) {
 // ─── MODAL CRÉATION DE FICHE ─────────────────────────────────────────────────
 
 export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
-  const { updatePart } = useAppContext();
   const [titre, setTitre] = useState('Retour de piste — contrôle');
   const [km, setKm] = useState(vehicle.mileage ?? '');
   const [notes, setNotes] = useState('');
@@ -159,6 +153,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
   const [customTasks, setCustomTasks] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [photos, setPhotos] = useState({});  // description → File
+  const [fournies, setFournies] = useState({});  // part_id → qty fournie
   const [createdFiche, setCreatedFiche] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -188,6 +183,25 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
 
   const allTasks = [...CHECKLIST_PISTE.filter(i => checked.has(i)), ...customTasks];
 
+  // Sélection des pièces fournies : coche = toute la quantité en stock par défaut
+  const togglePiece = (p) => {
+    setFournies(f => {
+      if (f[p.id]) { const { [p.id]: _, ...rest } = f; return rest; }
+      return { ...f, [p.id]: Math.max(1, p.qty ?? 1) };
+    });
+  };
+  const setPieceQty = (p, delta) => {
+    setFournies(f => {
+      const next = (f[p.id] ?? 0) + delta;
+      if (next <= 0) { const { [p.id]: _, ...rest } = f; return rest; }
+      return { ...f, [p.id]: Math.min(next, Math.max(1, p.qty ?? 1)) };
+    });
+  };
+
+  const piecesFournies = () => (vehicle.parts ?? [])
+    .filter(p => fournies[p.id] > 0)
+    .map(p => ({ part_id: p.id, qty: fournies[p.id], name: p.name, reference: p.reference, reorder: p.reorder }));
+
   const handleCreate = async () => {
     if (allTasks.length === 0) return;
     const fiche = await onCreate({
@@ -196,6 +210,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
       km: parseInt(km) || null,
       notes: notes.trim(),
       taches: allTasks.map(desc => ({ description: desc, photoFile: photos[desc] ?? null })),
+      pieces: piecesFournies(),
     });
     if (fiche) setCreatedFiche(fiche);
   };
@@ -249,7 +264,8 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               <Btn onClick={copyLink}>{copied ? '✓ Copié !' : '📋 Copier le lien'}</Btn>
               <Btn variant="secondary" onClick={() => openFichePdf(
                 createdFiche, vehicle,
-                allTasks.map(desc => ({ description: desc, origine: 'demande' }))
+                allTasks.map(desc => ({ description: desc, origine: 'demande' })),
+                piecesFournies().map(p => ({ name: p.name, reference: p.reference, qty: p.qty, reorder: p.reorder }))
               )}>📄 Télécharger le PDF</Btn>
             </div>
             <div style={{ marginTop: 18 }}>
@@ -326,41 +342,48 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               <Btn variant="secondary" onClick={addCustom}>+ Ajouter</Btn>
             </div>
 
-            {/* Stock de pièces : visualiser et cocher ce que le mécano doit recommander */}
+            {/* Pièces fournies avec le véhicule : TU choisis ce que tu mets dans la voiture */}
             {(vehicle.parts ?? []).length > 0 && (
               <>
-                <label style={lbl}>Stock de pièces du véhicule — coche ce qu'il doit recommander</label>
+                <label style={lbl}>Pièces fournies avec le véhicule — coche ce que tu mets dans la voiture</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
                   {(vehicle.parts ?? []).map(p => {
-                    const qty = p.qty ?? 1;
-                    const epuise = qty === 0;
+                    const stock = p.qty ?? 1;
+                    const epuise = stock === 0;
+                    const selQty = fournies[p.id] ?? 0;
+                    const isSel = selQty > 0;
                     return (
                       <div key={p.id} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                        borderRadius: 8, background: 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${epuise ? THEME.accent.red + '33' : THEME.border}`,
-                      }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', minWidth: 26, fontVariantNumeric: 'tabular-nums' }}>
-                          {qty}×
-                        </span>
+                        borderRadius: 8, cursor: epuise ? 'default' : 'pointer',
+                        background: isSel ? THEME.accent.orangeDim : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${isSel ? THEME.accent.orange + '55' : epuise ? THEME.accent.red + '33' : THEME.border}`,
+                        opacity: epuise ? 0.55 : 1,
+                      }}
+                        onClick={() => !epuise && togglePiece(p)}
+                      >
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                          border: `2px solid ${isSel ? THEME.accent.orange : THEME.text.muted}`,
+                          background: isSel ? THEME.accent.orange : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#fff', fontSize: 12, fontWeight: 900,
+                        }}>{isSel ? '✓' : ''}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 13, color: THEME.text.primary, fontWeight: 600 }}>{p.name}</span>
+                          <span style={{ fontSize: 13, color: isSel ? THEME.text.primary : THEME.text.secondary, fontWeight: 600 }}>{p.name}</span>
                           {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 8 }}>réf. {p.reference}</span>}
-                          {epuise && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: THEME.accent.redDim, color: THEME.accent.red, marginLeft: 8, textTransform: 'uppercase' }}>Épuisé</span>}
+                          <span style={{ fontSize: 11, color: epuise ? THEME.accent.red : THEME.text.muted, marginLeft: 8 }}>
+                            {epuise ? 'épuisé' : `${stock} en stock`}
+                          </span>
                         </div>
-                        <button
-                          onClick={() => updatePart(p.id, { reorder: !p.reorder })}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', flexShrink: 0 }}
-                        >
-                          <span style={{
-                            width: 16, height: 16, borderRadius: 4,
-                            border: `2px solid ${p.reorder ? THEME.accent.yellow : THEME.text.muted}`,
-                            background: p.reorder ? THEME.accent.yellow : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#0D0D0F', fontSize: 11, fontWeight: 900,
-                          }}>{p.reorder ? '✓' : ''}</span>
-                          <span style={{ fontSize: 11, fontWeight: p.reorder ? 700 : 400, color: p.reorder ? THEME.accent.yellow : THEME.text.muted, whiteSpace: 'nowrap' }}>À recommander</span>
-                        </button>
+                        {/* Quantité fournie */}
+                        {isSel && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setPieceQty(p, -1)} style={{ width: 22, height: 22, borderRadius: 5, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: THEME.text.secondary, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>−</button>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 30, textAlign: 'center' }}>{selQty}×</span>
+                            <button onClick={() => setPieceQty(p, +1)} disabled={selQty >= stock} style={{ width: 22, height: 22, borderRadius: 5, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: selQty >= stock ? THEME.text.muted : THEME.text.secondary, fontSize: 13, cursor: selQty >= stock ? 'not-allowed' : 'pointer', fontFamily: 'inherit', lineHeight: 1 }}>+</button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

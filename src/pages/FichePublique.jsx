@@ -138,13 +138,13 @@ export function FichePublique({ token }) {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pieces.map(p => {
-                const stock = p.qty ?? 1;
+                const fournie = p.fournie ?? 0;
                 const used = p.used ?? 0;
-                const epuise = stock === 0;
+                const reste = fournie - used;
                 return (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.25)', border: `1px solid ${used > 0 ? THEME.accent.orange + '44' : THEME.border}` }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: epuise ? THEME.accent.red : THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 40 }}>
-                      {stock} <span style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 400 }}>en stock</span>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: THEME.accent.green, fontFamily: 'Rajdhani, sans-serif', flexShrink: 0, minWidth: 44 }}>
+                      {fournie}× <span style={{ fontSize: 10, color: THEME.text.muted, fontWeight: 400 }}>fournie{fournie > 1 ? 's' : ''}</span>
                     </span>
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <span style={{ color: THEME.text.primary, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
@@ -152,29 +152,25 @@ export function FichePublique({ token }) {
                       {p.notes && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic' }}>{p.notes}</div>}
                     </div>
                     {!readOnly && (
-                      epuise && used === 0 ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: THEME.accent.red }}>Pas en stock</span>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          {used > 0 && (
-                            <>
-                              <button onClick={() => usePiece(p, -1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: THEME.text.secondary, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
-                              <span style={{ fontSize: 15, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 18, textAlign: 'center' }}>{used}</span>
-                            </>
-                          )}
-                          <button
-                            onClick={() => usePiece(p, +1)}
-                            disabled={stock <= 0}
-                            style={{
-                              padding: '8px 12px', borderRadius: 8, border: 'none',
-                              background: stock > 0 ? THEME.accent.orange : 'rgba(255,255,255,0.06)',
-                              color: stock > 0 ? '#fff' : THEME.text.muted,
-                              fontSize: 12, fontWeight: 700, cursor: stock > 0 ? 'pointer' : 'not-allowed',
-                              fontFamily: 'inherit', whiteSpace: 'nowrap',
-                            }}
-                          >{used > 0 ? '+1' : 'J\'en utilise 1'}</button>
-                        </div>
-                      )
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        {used > 0 && (
+                          <>
+                            <button onClick={() => usePiece(p, -1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: THEME.text.secondary, fontSize: 16, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: THEME.accent.orange, fontFamily: 'Rajdhani, sans-serif', minWidth: 18, textAlign: 'center' }}>{used}</span>
+                          </>
+                        )}
+                        <button
+                          onClick={() => usePiece(p, +1)}
+                          disabled={reste <= 0}
+                          style={{
+                            padding: '8px 12px', borderRadius: 8, border: 'none',
+                            background: reste > 0 ? THEME.accent.orange : 'rgba(255,255,255,0.06)',
+                            color: reste > 0 ? '#fff' : THEME.text.muted,
+                            fontSize: 12, fontWeight: 700, cursor: reste > 0 ? 'pointer' : 'not-allowed',
+                            fontFamily: 'inherit', whiteSpace: 'nowrap',
+                          }}
+                        >{used > 0 ? (reste > 0 ? '+1' : 'Tout utilisé') : 'J\'en utilise 1'}</button>
+                      </div>
                     )}
                     {readOnly && used > 0 && (
                       <span style={{ fontSize: 12, fontWeight: 700, color: THEME.accent.orange }}>{used} utilisée{used > 1 ? 's' : ''}</span>
@@ -184,16 +180,13 @@ export function FichePublique({ token }) {
               })}
             </div>
 
-            {/* Consigne de commande : 1 utilisée = 1 commandée, ×2 si pas en stock */}
+            {/* Consigne de commande : 1 utilisée = 1 à recommander */}
             {(() => {
               const lignes = [];
               pieces.forEach(p => {
-                const stock = p.qty ?? 1;
                 const used = p.used ?? 0;
                 if (used > 0) {
                   lignes.push({ key: `u-${p.id}`, text: `${used}× ${p.name}${p.reference ? ` (réf. ${p.reference})` : ''}` });
-                } else if (stock === 0) {
-                  lignes.push({ key: `z-${p.id}`, text: `${p.name} — pas en stock : si tu dois la changer, commandes-en 2 (une à monter + une de rab)` });
                 } else if (p.reorder) {
                   lignes.push({ key: `r-${p.id}`, text: `${p.name}${p.reference ? ` (réf. ${p.reference})` : ''} — demandé par EASYDRIFT` });
                 }
