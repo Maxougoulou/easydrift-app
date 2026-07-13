@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { toast } from '../lib/toast';
 import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, Btn, Spinner } from '../components/ui';
@@ -495,6 +496,10 @@ function VehicleDetail({ vehicle, onBack }) {
   const [nfcCopied, setNfcCopied] = useState(false);
 
   const copyNfcLink = () => {
+    if (!vehicle.token_public) {
+      toast.error('Token NFC absent', 'Exécute supabase-nfc-v6.sql dans l\'éditeur SQL Supabase, puis recharge la page.');
+      return;
+    }
     navigator.clipboard.writeText(`${window.location.origin}/v/${vehicle.token_public}`);
     setNfcCopied(true);
     setTimeout(() => setNfcCopied(false), 2500);
@@ -560,11 +565,9 @@ function VehicleDetail({ vehicle, onBack }) {
         subtitle={`${vehicle.plate} • ${vehicle.year}`}
         actions={<>
           <StatusBadge status={vehicle.status} />
-          {vehicle.token_public && (
-            <Btn size="sm" variant="secondary" onClick={copyNfcLink} title="Lien permanent à graver sur la puce NFC du véhicule">
-              {nfcCopied ? '✓ Copié !' : '📶 Lien NFC'}
-            </Btn>
-          )}
+          <Btn size="sm" variant="secondary" onClick={copyNfcLink}>
+            {nfcCopied ? '✓ Copié !' : '📶 Lien NFC'}
+          </Btn>
           <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)}>✏ Modifier</Btn>
           <Btn size="sm" onClick={() => setShowNewFiche(true)}>+ Nouvelle fiche</Btn>
         </>}
