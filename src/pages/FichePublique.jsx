@@ -12,6 +12,7 @@ export function FichePublique({ token }) {
   const [notFound, setNotFound] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [showKmEdit, setShowKmEdit] = useState(false);
+  const [showFinish, setShowFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
   const load = useCallback(async () => {
@@ -74,10 +75,18 @@ export function FichePublique({ token }) {
     await load();
   };
 
-  const terminer = async () => {
+  // Validation finale : le kilométrage est OBLIGATOIRE (exigé aussi côté serveur)
+  const terminer = async (km) => {
     setFinishing(true);
-    await supabase.rpc('fiche_publique_terminer', { p_token: token });
-    await load();
+    const { data: ok } = await supabase.rpc('fiche_publique_terminer', {
+      p_token: token, p_km: parseInt(km),
+    });
+    if (ok) {
+      setShowFinish(false);
+      await load();
+    } else {
+      alert('Kilométrage invalide — vérifie la valeur saisie.');
+    }
     setFinishing(false);
   };
 
@@ -258,12 +267,11 @@ export function FichePublique({ token }) {
         </button>
       )}
 
-      {/* Bouton Terminé */}
+      {/* Bouton Terminé → étape kilométrage obligatoire */}
       {!readOnly && !isDone && (
         <div style={{ position: 'sticky', bottom: 0, padding: '12px 0 20px', background: `linear-gradient(transparent, ${THEME.bg.app} 30%)` }}>
           <button
-            onClick={terminer}
-            disabled={finishing}
+            onClick={() => setShowFinish(true)}
             style={{
               width: '100%', padding: '17px', borderRadius: 14, border: 'none',
               background: THEME.accent.green, color: '#fff',
@@ -272,13 +280,14 @@ export function FichePublique({ token }) {
               boxShadow: '0 4px 20px rgba(34,197,94,0.35)',
             }}
           >
-            {finishing ? '…' : '✓ J\'ai terminé'}
+            ✓ J'ai terminé
           </button>
         </div>
       )}
 
       {showAddTask && <AddTaskSheet onAdd={addTache} onClose={() => setShowAddTask(false)} />}
       {showKmEdit && <KmSheet current={vehicle.mileage} onSave={updateKm} onClose={() => setShowKmEdit(false)} />}
+      {showFinish && <FinishSheet current={vehicle.mileage} onConfirm={terminer} onClose={() => setShowFinish(false)} loading={finishing} />}
     </PublicShell>
   );
 }
@@ -445,6 +454,62 @@ function AddTaskSheet({ onAdd, onClose }) {
             disabled={!desc.trim()}
             style={{ flex: 2, padding: '14px', borderRadius: 12, border: 'none', background: desc.trim() ? THEME.accent.orange : 'rgba(255,255,255,0.06)', color: desc.trim() ? '#fff' : THEME.text.muted, fontSize: 15, fontWeight: 800, cursor: desc.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
           >Ajouter</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Étape finale OBLIGATOIRE : impossible de valider la fiche sans donner le km
+function FinishSheet({ current, onConfirm, onClose, loading }) {
+  const [km, setKm] = useState('');
+  const parsed = parseInt(km);
+  const valid = !isNaN(parsed) && parsed > 0;
+  const recule = valid && current > 0 && parsed < current;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.modal, borderRadius: '20px 20px 0 0', border: `1px solid ${THEME.border}`, padding: '22px 18px calc(env(safe-area-inset-bottom, 0px) + 22px)', width: '100%', maxWidth: 640 }}>
+        <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,0.15)', borderRadius: 2, margin: '0 auto 18px' }} />
+        <div style={{ fontSize: 17, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', marginBottom: 4 }}>Dernière étape ✓</div>
+        <div style={{ fontSize: 13, color: THEME.text.secondary, marginBottom: 14, lineHeight: 1.5 }}>
+          Relève le <strong style={{ color: THEME.accent.orange }}>kilométrage au compteur</strong> pour valider la fiche.
+          {current > 0 && <span style={{ color: THEME.text.muted }}> Dernier relevé : {current.toLocaleString('fr-FR')} km.</span>}
+        </div>
+        <input
+          autoFocus
+          type="number"
+          inputMode="numeric"
+          placeholder="Kilométrage au compteur"
+          style={{
+            width: '100%', background: THEME.bg.input,
+            border: `1px solid ${valid ? THEME.accent.green + '66' : THEME.border}`,
+            borderRadius: 10, padding: '15px 14px', color: THEME.text.primary,
+            fontSize: 20, fontWeight: 700, fontFamily: 'Rajdhani, sans-serif',
+            outline: 'none', boxSizing: 'border-box', marginBottom: 8,
+          }}
+          value={km}
+          onChange={e => setKm(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && valid && !loading) onConfirm(km); }}
+        />
+        {recule && (
+          <div style={{ fontSize: 12, color: THEME.accent.yellow, marginBottom: 8 }}>
+            ⚠ Valeur inférieure au dernier relevé ({current.toLocaleString('fr-FR')} km) — vérifie le compteur.
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '14px', borderRadius: 12, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.04)', color: THEME.text.secondary, fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Retour</button>
+          <button
+            onClick={() => valid && onConfirm(km)}
+            disabled={!valid || loading}
+            style={{
+              flex: 2, padding: '14px', borderRadius: 12, border: 'none',
+              background: valid ? THEME.accent.green : 'rgba(255,255,255,0.06)',
+              color: valid ? '#fff' : THEME.text.muted,
+              fontSize: 15, fontWeight: 800, cursor: valid && !loading ? 'pointer' : 'not-allowed',
+              fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.03em',
+            }}
+          >{loading ? '…' : 'Valider la fiche'}</button>
         </div>
       </div>
     </div>
