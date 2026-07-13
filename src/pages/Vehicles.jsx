@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, Btn, Spinner } from '../components/ui';
@@ -403,6 +404,82 @@ function VehicleCard({ vehicle, onClick, onEdit }) {
   );
 }
 
+// ─── HISTORIQUE KILOMÉTRAGE ──────────────────────────────────────────────────
+// Chaque modification de km est historisée par un trigger en base (date + heure).
+
+function KmHistory({ vehicleId, currentKm }) {
+  const [log, setLog] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('mileage_log')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => setLog(data ?? []));
+  }, [vehicleId, currentKm]);
+
+  if (log.length < 2 && !open) {
+    // Pas encore d'évolution à montrer — on n'affiche rien tant qu'il n'y a qu'un relevé
+    if (log.length === 0) return null;
+  }
+
+  // Delta sur les 30 derniers jours
+  const now = Date.now();
+  const recent = log.filter(l => now - new Date(l.created_at).getTime() < 30 * 86400000);
+  const delta30j = recent.length >= 2 ? recent[0].km - recent[recent.length - 1].km : null;
+
+  return (
+    <div style={{ marginBottom: 20, border: `1px solid ${THEME.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          padding: '11px 16px', background: 'rgba(255,255,255,0.02)', border: 'none',
+          cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+        }}
+      >
+        <span style={{ color: THEME.text.muted, fontSize: 10, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>▶</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: THEME.text.secondary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Évolution du kilométrage
+        </span>
+        <span style={{ fontSize: 11, color: THEME.text.muted }}>{log.length} relevé{log.length > 1 ? 's' : ''}</span>
+        {delta30j !== null && delta30j > 0 && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: THEME.accent.blue, fontFamily: 'Rajdhani, sans-serif' }}>
+            +{delta30j.toLocaleString('fr-FR')} km / 30 j
+          </span>
+        )}
+      </button>
+      {open && (
+        <div style={{ borderTop: `1px solid ${THEME.border}`, maxHeight: 260, overflowY: 'auto' }}>
+          {log.map((l, i) => {
+            const prev = log[i + 1];
+            const delta = prev ? l.km - prev.km : null;
+            const d = new Date(l.created_at);
+            return (
+              <div key={l.id} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '7px 16px', borderBottom: i < log.length - 1 ? `1px solid rgba(255,255,255,0.04)` : 'none' }}>
+                <span style={{ fontSize: 11, color: THEME.text.muted, minWidth: 128 }}>
+                  {d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' })} · {d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif', fontVariantNumeric: 'tabular-nums' }}>
+                  {l.km.toLocaleString('fr-FR')} km
+                </span>
+                {delta !== null && delta !== 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: delta > 0 ? THEME.accent.blue : THEME.accent.yellow, fontFamily: 'Rajdhani, sans-serif' }}>
+                    {delta > 0 ? '+' : ''}{delta.toLocaleString('fr-FR')}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── DÉTAIL VÉHICULE ─────────────────────────────────────────────────────────
 
 function VehicleDetail({ vehicle, onBack }) {
@@ -582,6 +659,9 @@ function VehicleDetail({ vehicle, onBack }) {
             </div>
           ))}
         </div>
+
+        {/* Historique kilométrage (trigger en base sur chaque modification) */}
+        <KmHistory vehicleId={vehicle.id} currentKm={vehicle.mileage} />
 
         {/* Coûts par année */}
         {costsByYear.length > 0 && (
