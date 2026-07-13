@@ -459,6 +459,178 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
   );
 }
 
+// ─── MODAL ÉDITION FICHE OUVERTE ─────────────────────────────────────────────
+// Ajouter/retirer des tâches ou des pièces, corriger titre/notes/consignes
+// tant que la fiche n'est pas clôturée. Chaque action sauvegarde directement.
+
+export function FicheEditModal({ fiche, vehicle, actions, onClose }) {
+  const { updateFiche, addTacheToFiche, updateTache, deleteTache, setFichePiece } = actions;
+  const [titre, setTitre] = useState(fiche.titre);
+  const [notes, setNotes] = useState(fiche.notes ?? '');
+  const [newDesc, setNewDesc] = useState('');
+  const [newConsigne, setNewConsigne] = useState('');
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const taches = fiche.taches ?? [];
+  const fourniesMap = Object.fromEntries((fiche.pieces_fournies ?? []).map(fp => [fp.part_id, fp]));
+
+  const inp = { width: '100%', background: THEME.bg.input, border: `1px solid ${THEME.border}`, borderRadius: 8, padding: '8px 12px', color: THEME.text.primary, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+  const lbl = { fontSize: 11, color: THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 };
+
+  const saveMeta = () => {
+    if (titre.trim() !== fiche.titre || (notes.trim() || null) !== (fiche.notes ?? null)) {
+      updateFiche(fiche.id, { titre: titre.trim() || fiche.titre, notes: notes.trim() || null });
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!newDesc.trim()) return;
+    setAdding(true);
+    const ok = await addTacheToFiche(fiche.id, { description: newDesc, consigne: newConsigne, photoFile: newPhoto });
+    if (ok) { setNewDesc(''); setNewConsigne(''); setNewPhoto(null); }
+    setAdding(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: THEME.bg.modal, borderRadius: 16, border: `1px solid ${THEME.border}`, padding: 26, width: '100%', maxWidth: 580, maxHeight: '92vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Modifier la fiche</div>
+            <div style={{ fontSize: 11, color: THEME.text.muted, marginTop: 2 }}>{vehicle.name} · les changements sont enregistrés immédiatement</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: THEME.text.muted, fontSize: 20, cursor: 'pointer' }}>×</button>
+        </div>
+
+        {/* Titre + notes */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>Titre</label>
+          <input style={inp} value={titre} onChange={e => setTitre(e.target.value)} onBlur={saveMeta} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={lbl}>Note libre pour le mécano</label>
+          <textarea style={{ ...inp, minHeight: 50, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} onBlur={saveMeta} />
+        </div>
+
+        {/* Tâches existantes */}
+        <label style={lbl}>Tâches ({taches.length})</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {taches.map(t => (
+            <div key={t.id} style={{ borderRadius: 8, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.02)', padding: '8px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: t.fait ? THEME.accent.green : THEME.text.muted, fontWeight: 900, fontSize: 13, flexShrink: 0 }}>{t.fait ? '✓' : '○'}</span>
+                <span style={{ flex: 1, fontSize: 13, color: THEME.text.primary }}>{t.description}</span>
+                {t.origine === 'mecano' && (
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: THEME.accent.blueDim, color: THEME.accent.blue, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Mécano</span>
+                )}
+                {confirmDel === t.id ? (
+                  <span style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => { deleteTache(t.id); setConfirmDel(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '2px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                    <button onClick={() => setConfirmDel(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '2px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+                  </span>
+                ) : (
+                  !t.fait && t.origine !== 'mecano' && (
+                    <button onClick={() => setConfirmDel(t.id)} style={{ background: 'none', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 15, padding: '0 2px' }}>×</button>
+                  )
+                )}
+              </div>
+              {/* Consigne éditable */}
+              {t.origine !== 'mecano' && (
+                <input
+                  defaultValue={t.consigne ?? ''}
+                  placeholder="Commentaire pour le mécano (optionnel)…"
+                  onBlur={e => { if ((e.target.value.trim() || null) !== (t.consigne ?? null)) updateTache(t.id, { consigne: e.target.value.trim() || null }); }}
+                  style={{ ...inp, marginTop: 6, fontSize: 12, padding: '5px 10px', background: 'rgba(0,0,0,0.25)' }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Ajouter une tâche */}
+        <div style={{ borderRadius: 10, border: `1px dashed ${THEME.accent.orange}55`, background: `${THEME.accent.orange}08`, padding: 12, marginBottom: 16 }}>
+          <label style={lbl}>Ajouter une tâche oubliée</label>
+          <input
+            style={{ ...inp, marginBottom: 6 }}
+            placeholder="ex : Contrôler le frein à main…"
+            value={newDesc}
+            onChange={e => setNewDesc(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAddTask(); }}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              style={{ ...inp, flex: 1, fontSize: 12 }}
+              placeholder="Commentaire (optionnel)…"
+              value={newConsigne}
+              onChange={e => setNewConsigne(e.target.value)}
+            />
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+              padding: '0 10px', borderRadius: 8, flexShrink: 0,
+              background: newPhoto ? THEME.accent.orangeDim : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${newPhoto ? THEME.accent.orange + '55' : THEME.border}`,
+              fontSize: 12, color: newPhoto ? THEME.accent.orange : THEME.text.muted,
+            }}>
+              📷{newPhoto ? ' ✓' : ''}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => setNewPhoto(e.target.files?.[0] ?? null)} />
+            </label>
+            <Btn size="sm" onClick={handleAddTask} disabled={!newDesc.trim() || adding}>{adding ? '…' : '+ Ajouter'}</Btn>
+          </div>
+        </div>
+
+        {/* Pièces fournies */}
+        {(vehicle.parts ?? []).length > 0 && (
+          <>
+            <label style={lbl}>Pièces fournies avec le véhicule</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+              {(vehicle.parts ?? []).map(p => {
+                const fp = fourniesMap[p.id];
+                const fournie = fp?.qty_fournie ?? 0;
+                const used = fp?.qty_utilisee ?? 0;
+                const stock = p.qty ?? 1;
+                const maxQty = fournie + stock;  // ce qui est déjà dans la voiture + le stock restant
+                const isSel = fournie > 0;
+                return (
+                  <div key={p.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8,
+                    background: isSel ? THEME.accent.orangeDim : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${isSel ? THEME.accent.orange + '55' : THEME.border}`,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, color: isSel ? THEME.text.primary : THEME.text.secondary, fontWeight: 600 }}>{p.name}</span>
+                      {p.reference && <span style={{ fontSize: 11, color: THEME.text.muted, marginLeft: 8 }}>réf. {p.reference}</span>}
+                      {used > 0 && <span style={{ fontSize: 11, color: THEME.accent.orange, marginLeft: 8 }}>{used} déjà utilisée{used > 1 ? 's' : ''}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setFichePiece(fiche.id, p.id, fournie - 1, used)}
+                        disabled={fournie <= used}
+                        style={{ width: 22, height: 22, borderRadius: 5, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: fournie <= used ? THEME.text.muted : THEME.text.secondary, fontSize: 13, cursor: fournie <= used ? 'not-allowed' : 'pointer', fontFamily: 'inherit', lineHeight: 1 }}
+                      >−</button>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: isSel ? THEME.accent.orange : THEME.text.muted, fontFamily: 'Rajdhani, sans-serif', minWidth: 30, textAlign: 'center' }}>{fournie}×</span>
+                      <button
+                        onClick={() => setFichePiece(fiche.id, p.id, fournie + 1, used)}
+                        disabled={fournie >= maxQty}
+                        style={{ width: 22, height: 22, borderRadius: 5, border: `1px solid ${THEME.border}`, background: 'rgba(255,255,255,0.05)', color: fournie >= maxQty ? THEME.text.muted : THEME.text.secondary, fontSize: 13, cursor: fournie >= maxQty ? 'not-allowed' : 'pointer', fontFamily: 'inherit', lineHeight: 1 }}
+                      >+</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Btn onClick={onClose}>Fermer</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MODAL CLÔTURE ───────────────────────────────────────────────────────────
 
 export function FicheClotureModal({ fiche, vehicle, onCloture, onClose, saving }) {

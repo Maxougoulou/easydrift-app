@@ -129,5 +129,61 @@ export function useFiches() {
     return true;
   };
 
-  return { saving, createFiche, cloturerFiche, deleteFiche };
+  // ── Édition d'une fiche ouverte ──────────────────────────────────────────
+
+  const updateFiche = async (id, data) => {
+    const { error } = await supabase.from('fiches').update(data).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); return false; }
+    return true;
+  };
+
+  const addTacheToFiche = async (ficheId, { description, consigne, photoFile }) => {
+    let photoUrl = null;
+    if (photoFile) {
+      try { photoUrl = await uploadPhoto(photoFile); }
+      catch (e) { console.error('[fiche] upload photo:', e); }
+    }
+    const { error } = await supabase.from('fiche_taches').insert({
+      fiche_id: ficheId,
+      description: description.trim(),
+      consigne: consigne?.trim() || null,
+      photo_url: photoUrl,
+      origine: 'demande',
+      position: 999,
+    });
+    if (error) { toast.error('Erreur', error.message); return false; }
+    toast.success('Tâche ajoutée');
+    return true;
+  };
+
+  const updateTache = async (id, data) => {
+    const { error } = await supabase.from('fiche_taches').update(data).eq('id', id);
+    if (error) { toast.error('Erreur', error.message); return false; }
+    return true;
+  };
+
+  const deleteTache = async (id) => {
+    const { error } = await supabase.from('fiche_taches').delete().eq('id', id);
+    if (error) { toast.error('Erreur', error.message); return false; }
+    return true;
+  };
+
+  // Quantité fournie d'une pièce sur la fiche (0 = retirée, borne min = déjà utilisée)
+  const setFichePiece = async (ficheId, partId, qty, usedQty = 0) => {
+    const target = Math.max(qty, usedQty);
+    if (target <= 0) {
+      const { error } = await supabase.from('fiche_pieces').delete()
+        .eq('fiche_id', ficheId).eq('part_id', partId);
+      if (error) { toast.error('Erreur', error.message); return false; }
+      return true;
+    }
+    const { error } = await supabase.from('fiche_pieces').upsert(
+      { fiche_id: ficheId, part_id: partId, qty_fournie: target },
+      { onConflict: 'fiche_id,part_id' }
+    );
+    if (error) { toast.error('Erreur', error.message); return false; }
+    return true;
+  };
+
+  return { saving, createFiche, cloturerFiche, deleteFiche, updateFiche, addTacheToFiche, updateTache, deleteTache, setFichePiece };
 }

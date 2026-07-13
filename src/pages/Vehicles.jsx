@@ -5,7 +5,7 @@ import { THEME } from '../lib/theme';
 import { TopBar } from '../components/TopBar';
 import { Avatar, StatusBadge, Btn, Spinner } from '../components/ui';
 import { VehicleForm, MaintenanceForm, EventForm, DocumentForm } from '../components/Forms';
-import { FicheCreateModal, FicheClotureModal, openFichePdf, ficheUrl } from '../components/FicheModals';
+import { FicheCreateModal, FicheClotureModal, FicheEditModal, openFichePdf, ficheUrl } from '../components/FicheModals';
 import { useAppContext } from '../lib/AppContext';
 import { useVehicleDocs } from '../hooks/useVehicles';
 import { useFiches } from '../hooks/useFiches';
@@ -485,7 +485,9 @@ function KmHistory({ vehicleId, currentKm }) {
 
 function VehicleDetail({ vehicle, onBack }) {
   const { team, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, vehicles, projects, createEvent, isMobile } = useAppContext();
-  const { saving, createFiche, cloturerFiche, deleteFiche } = useFiches();
+  const ficheActions = useFiches();
+  const { saving, createFiche, cloturerFiche, deleteFiche } = ficheActions;
+  const [editFicheId, setEditFicheId] = useState(null);
   const [activeTab, setActiveTab] = useState('journal');
   const [showEdit, setShowEdit] = useState(false);
   const [showAddMaintenance, setShowAddMaintenance] = useState(false);
@@ -611,7 +613,8 @@ function VehicleDetail({ vehicle, onBack }) {
                 {(ficheOuverte.taches ?? []).filter(t => t.fait).length}/{(ficheOuverte.taches ?? []).length} tâches faites
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Btn size="sm" variant="secondary" onClick={() => setEditFicheId(ficheOuverte.id)}>✏ Modifier</Btn>
               <Btn size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(ficheUrl(ficheOuverte)); }}>📋 Lien</Btn>
               <Btn size="sm" variant="secondary" onClick={() => openPdf(ficheOuverte)}>📄 PDF</Btn>
               <Btn size="sm" onClick={() => setFicheACloturer(ficheOuverte)}>Clôturer</Btn>
@@ -691,7 +694,7 @@ function VehicleDetail({ vehicle, onBack }) {
             {journal.map((item, idx) => (
               item.kind === 'maintenance'
                 ? <MaintenanceRow key={`m-${item.data.id}`} entry={item.data} team={team} isLast={idx === journal.length - 1} onDelete={deleteMaintenance} />
-                : <FicheJournalRow key={`f-${item.data.id}`} fiche={item.data} vehicle={vehicle} isLast={idx === journal.length - 1} onCloturer={() => setFicheACloturer(item.data)} onDelete={deleteFiche} onPdf={() => openPdf(item.data)} />
+                : <FicheJournalRow key={`f-${item.data.id}`} fiche={item.data} vehicle={vehicle} isLast={idx === journal.length - 1} onCloturer={() => setFicheACloturer(item.data)} onDelete={deleteFiche} onPdf={() => openPdf(item.data)} onEdit={() => setEditFicheId(item.data.id)} />
             ))}
             {journal.length === 0 && (
               <div style={{ textAlign: 'center', padding: 40, color: THEME.text.muted }}>
@@ -712,7 +715,7 @@ function VehicleDetail({ vehicle, onBack }) {
         {activeTab === 'fiches' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {(vehicle.fiches ?? []).map(f => (
-              <FicheJournalRow key={f.id} fiche={f} vehicle={vehicle} standalone onCloturer={() => setFicheACloturer(f)} onDelete={deleteFiche} onPdf={() => openPdf(f)} />
+              <FicheJournalRow key={f.id} fiche={f} vehicle={vehicle} standalone onCloturer={() => setFicheACloturer(f)} onDelete={deleteFiche} onPdf={() => openPdf(f)} onEdit={() => setEditFicheId(f.id)} />
             ))}
             {(vehicle.fiches ?? []).length === 0 && (
               <div style={{ textAlign: 'center', padding: 40, color: THEME.text.muted }}>
@@ -744,13 +747,18 @@ function VehicleDetail({ vehicle, onBack }) {
       {ficheACloturer && (
         <FicheClotureModal fiche={ficheACloturer} vehicle={vehicle} onCloture={handleCloture} onClose={() => setFicheACloturer(null)} saving={saving} />
       )}
+      {editFicheId && (() => {
+        // Fiche fraîche depuis le realtime — le modal reflète chaque changement
+        const f = (vehicle.fiches ?? []).find(x => x.id === editFicheId);
+        return f ? <FicheEditModal fiche={f} vehicle={vehicle} actions={ficheActions} onClose={() => setEditFicheId(null)} /> : null;
+      })()}
     </div>
   );
 }
 
 // ─── FICHE DANS LE JOURNAL ───────────────────────────────────────────────────
 
-function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDelete, onPdf }) {
+function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDelete, onPdf, onEdit }) {
   // Compacte par défaut ; seule une fiche encore ouverte s'affiche dépliée
   const isOpen = fiche.statut === 'envoyée';
   const [expanded, setExpanded] = useState(isOpen);
@@ -843,6 +851,7 @@ function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDel
           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             {isOpen && (
               <>
+                <Btn size="sm" variant="secondary" onClick={onEdit}>✏ Modifier</Btn>
                 <Btn size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(ficheUrl(fiche))}>📋 Copier le lien</Btn>
                 <Btn size="sm" variant="secondary" onClick={onPdf}>📄 PDF</Btn>
                 <Btn size="sm" onClick={onCloturer}>Clôturer</Btn>
