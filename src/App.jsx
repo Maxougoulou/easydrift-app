@@ -139,7 +139,7 @@ export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
   const { team, loading: teamLoading } = useTeam();
   const { projects, loading: projectsLoading, createProject, updateProject, deleteProject, updateTaskStatus, addTask, deleteTask, addComment } = useProjects();
-  const { vehicles, loading: vehiclesLoading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, addPart, updatePart, deletePart } = useVehicles();
+  const { vehicles, loading: vehiclesLoading, createVehicle, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, updateMileage, addPart, updatePart, deletePart, refetch: refetchVehicles } = useVehicles();
   const { events, createEvent, deleteEvent } = useEvents();
   const { budget, addBudgetEntry, updateCategory } = useBudget();
   const isMobile = useIsMobile();
@@ -215,6 +215,7 @@ export default function App() {
     addPart,
     updatePart,
     deletePart,
+    refetchVehicles,
     // Events
     createEvent,
     deleteEvent,

@@ -5,8 +5,12 @@ import { toast } from '../lib/toast';
 // CRUD admin des fiches d'intervention.
 // Les véhicules (avec fiches imbriquées) viennent de useVehicles ;
 // ce hook ne gère que les mutations.
-export function useFiches() {
+// `onChange` est appelé après CHAQUE mutation réussie pour rafraîchir
+// les données immédiatement (sans dépendre du realtime).
+export function useFiches(onChange) {
   const [saving, setSaving] = useState(false);
+
+  const notify = () => { try { onChange?.(); } catch { /* refetch best-effort */ } };
 
   // Upload d'une photo dans le bucket, retourne l'URL publique
   const uploadPhoto = async (file, folder = 'taches') => {
@@ -21,7 +25,7 @@ export function useFiches() {
   };
 
   // Créer une fiche + ses tâches (avec photos optionnelles), statut 'envoyée'
-  // taches : [{ description, photoFile? }] — pieces : [{ part_id, qty }]
+  // taches : [{ description, photoFile?, consigne? }] — pieces : [{ part_id, qty }]
   const createFiche = async ({ vehicleId, titre, km, notes, taches, pieces = [] }) => {
     setSaving(true);
     try {
@@ -69,6 +73,7 @@ export function useFiches() {
       }
 
       toast.success('Fiche créée et envoyée');
+      notify();
       return fiche;
     } catch (err) {
       toast.error('Erreur', err.message);
@@ -113,6 +118,7 @@ export function useFiches() {
       }
 
       toast.success('Fiche clôturée');
+      notify();
       return true;
     } catch (err) {
       toast.error('Erreur', err.message);
@@ -126,6 +132,7 @@ export function useFiches() {
     const { error } = await supabase.from('fiches').delete().eq('id', id);
     if (error) { toast.error('Erreur', error.message); return false; }
     toast.success('Fiche supprimée');
+    notify();
     return true;
   };
 
@@ -134,6 +141,7 @@ export function useFiches() {
   const updateFiche = async (id, data) => {
     const { error } = await supabase.from('fiches').update(data).eq('id', id);
     if (error) { toast.error('Erreur', error.message); return false; }
+    notify();
     return true;
   };
 
@@ -152,19 +160,21 @@ export function useFiches() {
       position: 999,
     });
     if (error) { toast.error('Erreur', error.message); return false; }
-    toast.success('Tâche ajoutée');
+    notify();
     return true;
   };
 
   const updateTache = async (id, data) => {
     const { error } = await supabase.from('fiche_taches').update(data).eq('id', id);
     if (error) { toast.error('Erreur', error.message); return false; }
+    notify();
     return true;
   };
 
   const deleteTache = async (id) => {
     const { error } = await supabase.from('fiche_taches').delete().eq('id', id);
     if (error) { toast.error('Erreur', error.message); return false; }
+    notify();
     return true;
   };
 
@@ -185,6 +195,7 @@ export function useFiches() {
       const { error } = await supabase.from('fiche_pieces').delete()
         .eq('fiche_id', ficheId).eq('part_id', partId);
       if (error) { toast.error('Erreur', error.message); return false; }
+      notify();
       return true;
     }
     const { error } = await supabase.from('fiche_pieces').upsert(
@@ -192,6 +203,7 @@ export function useFiches() {
       { onConflict: 'fiche_id,part_id' }
     );
     if (error) { toast.error('Erreur', error.message); return false; }
+    notify();
     return true;
   };
 

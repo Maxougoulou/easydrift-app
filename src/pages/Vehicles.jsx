@@ -427,9 +427,9 @@ function KmHistory({ vehicleId, currentKm }) {
     if (log.length === 0) return null;
   }
 
-  // Delta sur les 30 derniers jours
-  const now = Date.now();
-  const recent = log.filter(l => now - new Date(l.created_at).getTime() < 30 * 86400000);
+  // Delta sur les 30 jours précédant le dernier relevé
+  const newest = log.length ? new Date(log[0].created_at).getTime() : 0;
+  const recent = log.filter(l => newest - new Date(l.created_at).getTime() < 30 * 86400000);
   const delta30j = recent.length >= 2 ? recent[0].km - recent[recent.length - 1].km : null;
 
   return (
@@ -484,8 +484,9 @@ function KmHistory({ vehicleId, currentKm }) {
 // ─── DÉTAIL VÉHICULE ─────────────────────────────────────────────────────────
 
 function VehicleDetail({ vehicle, onBack }) {
-  const { team, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, vehicles, projects, createEvent, isMobile } = useAppContext();
-  const ficheActions = useFiches();
+  const { team, updateVehicle, deleteVehicle, addMaintenance, deleteMaintenance, vehicles, projects, createEvent, isMobile, refetchVehicles } = useAppContext();
+  // Chaque mutation de fiche recharge les données immédiatement
+  const ficheActions = useFiches(refetchVehicles);
   const { saving, createFiche, cloturerFiche, deleteFiche } = ficheActions;
   const [editFicheId, setEditFicheId] = useState(null);
   const [activeTab, setActiveTab] = useState('journal');
