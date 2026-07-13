@@ -180,6 +180,12 @@ const INITIAL_HISTORY = [
   { id: 102, date:'2022-02-01', invoice:'FC151203', destination:'63500 Issoire (FR)',          zoneId:'france',     ringType:'DTS 200×600', qty:'4',  palettes:'0', colis:'2', costJeepest:'53.62',   chargedClient:'', notes:'2 colis' },
   { id: 103, date:'2021-03-31', invoice:'FC141073', destination:'87920 Condat/Vienne (FR)',    zoneId:'france',     ringType:'DTS 230×660', qty:'2',  palettes:'0', colis:'1', costJeepest:'49.94',   chargedClient:'', notes:'2 DTS66' },
   { id: 104, date:'2021-02-09', invoice:'FC139285', destination:'60300 Norrkoping (Suède)',    zoneId:'eu_loin',    ringType:'DTS 200×600', qty:'50', palettes:'5', colis:'0', costJeepest:'1186.78', chargedClient:'', notes:'5 palettes' },
+  // FC209198 - 30/06/2026
+  { id: 105, date:'2026-06-30', invoice:'FC209198', destination:'77515 La Celle sur Morin (FR)', zoneId:'france',   ringType:'DTS 200×600', qty:'2',  palettes:'0', colis:'1', costJeepest:'68.84',   chargedClient:'', notes:'2 DTS60 + 1 TVAC' },
+  { id: 106, date:'2026-06-30', invoice:'FC209198', destination:'69540 Irigny (FR)',             zoneId:'france',   ringType:'DTS 200×600', qty:'2',  palettes:'0', colis:'1', costJeepest:'56.70',   chargedClient:'', notes:'2 DTS60' },
+  { id: 107, date:'2026-06-30', invoice:'FC209198', destination:'90340 Chevremont (FR)',         zoneId:'france',   ringType:'DTS 180×560', qty:'20', palettes:'1', colis:'0', costJeepest:'135.30',  chargedClient:'', notes:'12 DTS56 + 8 DTS60' },
+  { id: 108, date:'2026-06-30', invoice:'FC209198', destination:'10059 Susa (Italie)',           zoneId:'eu_proche',ringType:'DTS 180×560', qty:'6',  palettes:'1', colis:'0', costJeepest:'8.50',    chargedClient:'', notes:'enlèvement palette 6 DTS56 + 2 TVAC — emballage seul' },
+  { id: 109, date:'2026-06-30', invoice:'FC209198', destination:'38110 Rochetoirin (FR)',        zoneId:'france',   ringType:'DTS 200×600', qty:'4',  palettes:'0', colis:'2', costJeepest:'94.45',   chargedClient:'', notes:'2 colis - 4 DTS60 + 1 TVAC' },
 ];
 
 // ── STORAGE ───────────────────────────────────────────────────────────────────
@@ -189,6 +195,38 @@ function loadLS(key, def) {
   catch { return def; }
 }
 function saveLS(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+// Config versionnée : force la mise à jour des capacités palette par taille
+// (DTS66 plus gros = 10/palette max, DTS60 = 20, DTS56 = 20)
+const CONFIG_VERSION = 2;
+function loadConfig() {
+  const stored = loadLS('expedition_config', DEFAULT_CONFIG);
+  if ((stored.version ?? 0) < CONFIG_VERSION) {
+    const migrated = {
+      ...stored,
+      ringsPerPalette: { ...DEFAULT_CONFIG.ringsPerPalette },
+      ringsPerColis: DEFAULT_CONFIG.ringsPerColis,
+      version: CONFIG_VERSION,
+    };
+    saveLS('expedition_config', migrated);
+    return migrated;
+  }
+  return stored;
+}
+
+// Historique : fusionne les nouvelles factures du code (INITIAL_HISTORY)
+// avec ce qui est déjà en localStorage, sans doublons ni perte de saisie
+function loadHistory() {
+  const stored = loadLS('expedition_history', null);
+  if (stored === null) return INITIAL_HISTORY;
+  const key = (h) => `${h.invoice}|${h.destination}|${h.costJeepest}`;
+  const existing = new Set(stored.map(key));
+  const missing = INITIAL_HISTORY.filter(h => !existing.has(key(h)));
+  if (missing.length === 0) return stored;
+  const merged = [...missing, ...stored].sort((a, b) => new Date(b.date) - new Date(a.date));
+  saveLS('expedition_history', merged);
+  return merged;
+}
 
 // ── FORMULAIRE AJOUT FACTURE (toujours visible) ───────────────────────────────
 
@@ -381,8 +419,8 @@ function EditRatesModal({ zones, config, onSave, onClose }) {
 export function ExpeditionModule() {
   const { isMobile } = useAppContext();
   const [zones, setZones] = useState(() => loadLS('expedition_zones', DEFAULT_ZONES));
-  const [config, setConfig] = useState(() => loadLS('expedition_config', DEFAULT_CONFIG));
-  const [history, setHistory] = useState(() => loadLS('expedition_history', INITIAL_HISTORY));
+  const [config, setConfig] = useState(() => loadConfig());
+  const [history, setHistory] = useState(() => loadHistory());
   const [showEditRates, setShowEditRates] = useState(false);
   const [filterZone, setFilterZone] = useState('all');
 
