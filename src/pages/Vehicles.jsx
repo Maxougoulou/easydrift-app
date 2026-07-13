@@ -415,6 +415,13 @@ function VehicleDetail({ vehicle, onBack }) {
   const [showNewFiche, setShowNewFiche] = useState(false);
   const [ficheACloturer, setFicheACloturer] = useState(null);
   const [confirmDeleteVehicle, setConfirmDeleteVehicle] = useState(false);
+  const [nfcCopied, setNfcCopied] = useState(false);
+
+  const copyNfcLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/v/${vehicle.token_public}`);
+    setNfcCopied(true);
+    setTimeout(() => setNfcCopied(false), 2500);
+  };
 
   const tabs = ['journal', 'fiches', 'parts', 'documents'];
   const tabLabels = {
@@ -476,6 +483,11 @@ function VehicleDetail({ vehicle, onBack }) {
         subtitle={`${vehicle.plate} • ${vehicle.year}`}
         actions={<>
           <StatusBadge status={vehicle.status} />
+          {vehicle.token_public && (
+            <Btn size="sm" variant="secondary" onClick={copyNfcLink} title="Lien permanent à graver sur la puce NFC du véhicule">
+              {nfcCopied ? '✓ Copié !' : '📶 Lien NFC'}
+            </Btn>
+          )}
           <Btn size="sm" variant="secondary" onClick={() => setShowEdit(true)}>✏ Modifier</Btn>
           <Btn size="sm" onClick={() => setShowNewFiche(true)}>+ Nouvelle fiche</Btn>
         </>}
