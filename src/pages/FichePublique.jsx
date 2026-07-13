@@ -27,6 +27,22 @@ export function FichePublique({ token }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // La fiche peut être modifiée côté EASYDRIFT pendant que le mécano l'a ouverte :
+  // resynchronisation toutes les 10 s + à chaque retour sur l'onglet.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    const interval = setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
+
   const toggleTache = async (tache, fait, commentaire) => {
     // Optimiste
     setData(d => ({
