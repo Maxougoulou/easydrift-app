@@ -376,6 +376,9 @@ function TacheCard({ tache, readOnly, onToggle, onPhoto, isMecano }) {
           {isMecano && (
             <span style={{ fontSize: 10, color: THEME.accent.blue, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ajouté par le mécano</span>
           )}
+          {tache.consigne && (
+            <div style={{ fontSize: 12, color: THEME.accent.orange, marginTop: 3 }}>📌 {tache.consigne}</div>
+          )}
           {tache.commentaire && !showComment && (
             <div style={{ fontSize: 12, color: THEME.text.secondary, marginTop: 3, fontStyle: 'italic' }}>💬 {tache.commentaire}</div>
           )}

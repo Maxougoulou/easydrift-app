@@ -52,6 +52,7 @@ export function useFiches() {
             origine: 'demande',
             position: i,
             photo_url: photoUrl,
+            consigne: t.consigne ?? null,
           };
         }));
         const { error: tErr } = await supabase.from('fiche_taches').insert(rows);

@@ -805,6 +805,7 @@ function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDel
                   {t.origine === 'mecano' && (
                     <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: THEME.accent.blueDim, color: THEME.accent.blue, marginLeft: 8, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>Ajouté par le mécano</span>
                   )}
+                  {t.consigne && <div style={{ fontSize: 11, color: THEME.accent.orange, marginTop: 2 }}>📌 {t.consigne}</div>}
                   {t.commentaire && <div style={{ fontSize: 11, color: THEME.text.muted, fontStyle: 'italic', marginTop: 2 }}>💬 {t.commentaire}</div>}
                   {t.photo_url && (
                     <a href={t.photo_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 5 }}>

@@ -55,6 +55,7 @@ export async function openFichePdf(fiche, vehicle, taches, pieces = []) {
   .task .box { width: 18px; height: 18px; border: 2px solid #333; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
   .task .desc { font-size: 13px; font-weight: 600; flex: 1; }
   .task .comment-line { border-bottom: 1px dotted #bbb; height: 20px; margin-top: 6px; }
+  .task .task-consigne { font-size: 12px; color: #b45309; margin-top: 3px; font-weight: 600; }
   .notes-box { border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; margin-top: 8px; font-size: 12px; color: #444; background: #fafafa; }
   .pieces-box { border: 1px solid #b7e4c7; border-radius: 8px; padding: 12px 16px; background: #f4fbf6; page-break-inside: avoid; }
   .piece { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 13px; }
@@ -97,6 +98,7 @@ export async function openFichePdf(fiche, vehicle, taches, pieces = []) {
       <div class="box"></div>
       <div style="flex:1">
         <div class="desc">${t.description}</div>
+        ${t.consigne ? `<div class="task-consigne">📌 ${t.consigne}</div>` : ''}
         <div class="comment-line"></div>
       </div>
     </div>
@@ -153,6 +155,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
   const [customTasks, setCustomTasks] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [photos, setPhotos] = useState({});  // description → File
+  const [consignes, setConsignes] = useState({});  // description → texte consigne
   const [fournies, setFournies] = useState({});  // part_id → qty fournie
   const [createdFiche, setCreatedFiche] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -163,12 +166,15 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
       if (next.has(item)) {
         next.delete(item);
         setPhotos(p => { const { [item]: _, ...rest } = p; return rest; });
+        setConsignes(c => { const { [item]: _, ...rest } = c; return rest; });
       } else {
         next.add(item);
       }
       return next;
     });
   };
+
+  const setConsigne = (desc, text) => setConsignes(c => ({ ...c, [desc]: text }));
 
   const addCustom = () => {
     const v = customInput.trim();
@@ -209,7 +215,11 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
       titre: titre.trim() || 'Fiche d\'intervention',
       km: parseInt(km) || null,
       notes: notes.trim(),
-      taches: allTasks.map(desc => ({ description: desc, photoFile: photos[desc] ?? null })),
+      taches: allTasks.map(desc => ({
+        description: desc,
+        photoFile: photos[desc] ?? null,
+        consigne: consignes[desc]?.trim() || null,
+      })),
       pieces: piecesFournies(),
     });
     if (fiche) setCreatedFiche(fiche);
@@ -264,7 +274,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               <Btn onClick={copyLink}>{copied ? '✓ Copié !' : '📋 Copier le lien'}</Btn>
               <Btn variant="secondary" onClick={() => openFichePdf(
                 createdFiche, vehicle,
-                allTasks.map(desc => ({ description: desc, origine: 'demande' })),
+                allTasks.map(desc => ({ description: desc, origine: 'demande', consigne: consignes[desc]?.trim() || null })),
                 piecesFournies().map(p => ({ name: p.name, reference: p.reference, qty: p.qty, reorder: p.reorder }))
               )}>📄 Télécharger le PDF</Btn>
             </div>
@@ -299,21 +309,39 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
               {CHECKLIST_PISTE.map(item => {
                 const isOn = checked.has(item);
                 return (
-                  <div key={item} onClick={() => toggle(item)} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                    borderRadius: 8, cursor: 'pointer',
+                  <div key={item} style={{
+                    borderRadius: 8,
                     border: `1px solid ${isOn ? THEME.accent.orange + '55' : THEME.border}`,
                     background: isOn ? THEME.accent.orangeDim : 'rgba(255,255,255,0.02)',
+                    overflow: 'hidden',
                   }}>
-                    <span style={{
-                      width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                      border: `2px solid ${isOn ? THEME.accent.orange : THEME.text.muted}`,
-                      background: isOn ? THEME.accent.orange : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 12, fontWeight: 900,
-                    }}>{isOn ? '✓' : ''}</span>
-                    <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary, flex: 1 }}>{item}</span>
-                    {isOn && renderPhotoBtn(item)}
+                    <div onClick={() => toggle(item)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', cursor: 'pointer' }}>
+                      <span style={{
+                        width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                        border: `2px solid ${isOn ? THEME.accent.orange : THEME.text.muted}`,
+                        background: isOn ? THEME.accent.orange : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 12, fontWeight: 900,
+                      }}>{isOn ? '✓' : ''}</span>
+                      <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary, flex: 1 }}>{item}</span>
+                      {isOn && renderPhotoBtn(item)}
+                    </div>
+                    {/* Consigne pour le mécano sur cette tâche */}
+                    {isOn && (
+                      <div style={{ padding: '0 12px 9px 40px' }}>
+                        <input
+                          value={consignes[item] ?? ''}
+                          onChange={e => setConsigne(item, e.target.value)}
+                          onClick={e => e.stopPropagation()}
+                          placeholder="Commentaire pour le mécano (optionnel)…"
+                          style={{
+                            width: '100%', background: 'rgba(0,0,0,0.25)', border: `1px solid ${THEME.border}`,
+                            borderRadius: 6, padding: '6px 10px', color: THEME.text.primary,
+                            fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -323,10 +351,24 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
             {customTasks.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
                 {customTasks.map((t, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: THEME.accent.orangeDim, border: `1px solid ${THEME.accent.orange}55` }}>
-                    <span style={{ fontSize: 13, color: THEME.text.primary, flex: 1 }}>{t}</span>
-                    {renderPhotoBtn(t)}
-                    <button onClick={() => { setCustomTasks(ts => ts.filter((_, j) => j !== i)); setPhoto(t, null); }} style={{ background: 'none', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 15 }}>×</button>
+                  <div key={i} style={{ borderRadius: 8, background: THEME.accent.orangeDim, border: `1px solid ${THEME.accent.orange}55`, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
+                      <span style={{ fontSize: 13, color: THEME.text.primary, flex: 1 }}>{t}</span>
+                      {renderPhotoBtn(t)}
+                      <button onClick={() => { setCustomTasks(ts => ts.filter((_, j) => j !== i)); setPhoto(t, null); setConsigne(t, ''); }} style={{ background: 'none', border: 'none', color: THEME.text.muted, cursor: 'pointer', fontSize: 15 }}>×</button>
+                    </div>
+                    <div style={{ padding: '0 12px 8px' }}>
+                      <input
+                        value={consignes[t] ?? ''}
+                        onChange={e => setConsigne(t, e.target.value)}
+                        placeholder="Commentaire pour le mécano (optionnel)…"
+                        style={{
+                          width: '100%', background: 'rgba(0,0,0,0.25)', border: `1px solid ${THEME.border}`,
+                          borderRadius: 6, padding: '6px 10px', color: THEME.text.primary,
+                          fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
