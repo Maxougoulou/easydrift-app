@@ -168,6 +168,16 @@ export function useFiches() {
     return true;
   };
 
+  const setTachePhoto = async (tacheId, file) => {
+    try {
+      const url = await uploadPhoto(file);
+      return updateTache(tacheId, { photo_url: url });
+    } catch (e) {
+      toast.error('Erreur upload photo', e.message);
+      return false;
+    }
+  };
+
   // Quantité fournie d'une pièce sur la fiche (0 = retirée, borne min = déjà utilisée)
   const setFichePiece = async (ficheId, partId, qty, usedQty = 0) => {
     const target = Math.max(qty, usedQty);
@@ -185,5 +195,5 @@ export function useFiches() {
     return true;
   };
 
-  return { saving, createFiche, cloturerFiche, deleteFiche, updateFiche, addTacheToFiche, updateTache, deleteTache, setFichePiece };
+  return { saving, createFiche, cloturerFiche, deleteFiche, updateFiche, addTacheToFiche, updateTache, deleteTache, setTachePhoto, setFichePiece };
 }
