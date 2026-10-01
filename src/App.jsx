@@ -20,6 +20,7 @@ import { CalendarModule, MessagesModule } from './pages/Modules';
 import { ExpeditionModule } from './pages/Expedition';
 import { TrackDaysModule } from './pages/TrackDays';
 import { SetupConfiguratorModule } from './pages/SetupConfigurator';
+import { SavModule } from './pages/Sav';
 import { Spinner } from './components/ui';
 import { THEME, NAV_ITEMS } from './lib/theme';
 
@@ -177,6 +178,7 @@ export default function App() {
       case 'trackdays':     return <TrackDaysModule />;
       case 'configurator':  return <SetupConfiguratorModule />;
       case 'vehicles':      return <VehiclesModule />;
+      case 'sav':           return <SavModule />;
       case 'expedition':  return <ExpeditionModule />;
       case 'calendar': return <CalendarModule />;
       case 'messages': return <MessagesModule />;

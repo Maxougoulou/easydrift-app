@@ -60,6 +60,7 @@ export const NAV_ITEMS = [
   { id: 'trackdays',    label: 'Track Days',    icon: '◉' },
   { id: 'configurator', label: 'Configurateur', icon: '⚙' },
   { id: 'vehicles',     label: 'Véhicules',     icon: '◎' },
+  { id: 'sav',          label: 'Anneaux SAV',   icon: '◍' },
   { id: 'expedition',   label: 'Expédition',    icon: '◳' },
   { id: 'calendar',     label: 'Calendrier',    icon: '▦' },
   { id: 'messages',     label: 'Messages',      icon: '◻' },
