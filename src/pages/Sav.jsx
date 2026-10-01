@@ -213,6 +213,78 @@ function LinkModal({ report, onClose }) {
   );
 }
 
+// ── Modale : confirmation de suppression ─────────────────────────────────────
+// Partagée par la liste et la fiche détaillée. Elle nomme la déclaration
+// visée et annonce ce qui part avec : une suppression est irréversible.
+
+function ConfirmDeleteModal({ report, onCancel, onConfirm }) {
+  const [busy, setBusy] = useState(false);
+  const nb = (report.fichiers ?? []).length;
+  const rempli = Boolean(report.submitted_at);
+  const nom = report.r_nom || report.libelle || 'Déclaration sans libellé';
+
+  const go = async () => {
+    setBusy(true);
+    // En cas d'échec on garde la modale ouverte pour permettre un nouvel essai.
+    try { await onConfirm(); } catch { setBusy(false); }
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 4500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(4px)' }}
+      onClick={busy ? undefined : onCancel}
+    >
+      <div onClick={e => e.stopPropagation()} style={{
+        background: THEME.bg.modal, border: `1px solid ${THEME.accent.red}44`,
+        borderRadius: 16, padding: 26, width: '100%', maxWidth: 420,
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px',
+          background: THEME.accent.redDim, border: `1.5px solid ${THEME.accent.red}44`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 21,
+        }}>🗑</div>
+
+        <div style={{
+          fontSize: 18, fontWeight: 800, color: THEME.text.primary,
+          fontFamily: 'Rajdhani, sans-serif', textAlign: 'center', marginBottom: 14,
+        }}>Supprimer cette déclaration ?</div>
+
+        <div style={{
+          padding: '11px 14px', borderRadius: 9, marginBottom: 14, textAlign: 'center',
+          background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`,
+        }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>{nom}</div>
+          {report.r_societe && (
+            <div style={{ fontSize: 12, color: THEME.text.muted, marginTop: 2 }}>{report.r_societe}</div>
+          )}
+        </div>
+
+        <div style={{ fontSize: 13.5, color: THEME.text.secondary, lineHeight: 1.6, marginBottom: 20, textAlign: 'center' }}>
+          {rempli ? (
+            <>
+              Les réponses du client
+              {nb > 0 && <> et <strong style={{ color: THEME.accent.red }}>{nb} fichier{nb > 1 ? 's' : ''}</strong></>}
+              {' '}seront définitivement perdus.
+            </>
+          ) : (
+            <>Le lien deviendra invalide : si le client l'a déjà reçu, il ne pourra plus répondre.</>
+          )}
+          <br />Cette action est irréversible.
+        </div>
+
+        <div style={{ display: 'flex', gap: 9 }}>
+          <Btn variant="secondary" onClick={onCancel} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
+            Annuler
+          </Btn>
+          <Btn variant="danger" onClick={go} disabled={busy} style={{ flex: 1, justifyContent: 'center' }}>
+            {busy ? 'Suppression…' : 'Supprimer'}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Modale : détail des réponses ─────────────────────────────────────────────
 
 function Lightbox({ file, onClose }) {
@@ -469,24 +541,24 @@ function DetailModal({ report, onClose, onUpdate, onDelete }) {
 
             {/* Suppression */}
             <div style={{ marginTop: 18, textAlign: 'center', paddingBottom: 6 }}>
-              {!confirmDel ? (
-                <button
-                  onClick={() => setConfirmDel(true)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: THEME.text.muted, fontSize: 12.5, fontFamily: 'inherit' }}
-                >Supprimer cette déclaration</button>
-              ) : (
-                <div style={{ display: 'flex', gap: 9, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12.5, color: THEME.accent.red }}>Supprimer définitivement ?</span>
-                  <Btn size="sm" variant="secondary" onClick={() => setConfirmDel(false)}>Annuler</Btn>
-                  <Btn size="sm" variant="danger" onClick={async () => { await onDelete(report.id); onClose(); }}>Supprimer</Btn>
-                </div>
-              )}
+              <button
+                onClick={() => setConfirmDel(true)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: THEME.text.muted, fontSize: 12.5, fontFamily: 'inherit' }}
+              >Supprimer cette déclaration</button>
             </div>
           </div>
         </div>
       </div>
 
       {lightbox && <Lightbox file={lightbox} onClose={() => setLightbox(null)} />}
+
+      {confirmDel && (
+        <ConfirmDeleteModal
+          report={report}
+          onCancel={() => setConfirmDel(false)}
+          onConfirm={async () => { await onDelete(report.id); onClose(); }}
+        />
+      )}
     </>
   );
 }
@@ -534,6 +606,7 @@ export function SavModule() {
   const [showCreate, setShowCreate] = useState(false);
   const [linkFor, setLinkFor] = useState(null);
   const [detail, setDetail] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
 
   // La modale de détail doit refléter les mises à jour (statut, notes).
   const detailLive = detail ? reports.find(r => r.id === detail.id) ?? detail : null;
@@ -696,6 +769,17 @@ export function SavModule() {
                         fontSize: 13, padding: '7px 9px', lineHeight: 1,
                       }}
                     >📋</button>
+                    <button
+                      title="Supprimer"
+                      onClick={e => { e.stopPropagation(); setToDelete(r); }}
+                      style={{
+                        background: 'rgba(255,255,255,0.05)', border: `1px solid ${THEME.border}`,
+                        borderRadius: 7, cursor: 'pointer', color: THEME.text.muted,
+                        fontSize: 13, padding: '7px 9px', lineHeight: 1, transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = `${THEME.accent.red}66`; e.currentTarget.style.background = THEME.accent.redDim; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = THEME.border; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                    >🗑</button>
                   </div>
                 </div>
               );
@@ -712,6 +796,13 @@ export function SavModule() {
           onClose={() => setDetail(null)}
           onUpdate={updateReport}
           onDelete={deleteReport}
+        />
+      )}
+      {toDelete && (
+        <ConfirmDeleteModal
+          report={toDelete}
+          onCancel={() => setToDelete(null)}
+          onConfirm={async () => { await deleteReport(toDelete.id); setToDelete(null); }}
         />
       )}
     </>

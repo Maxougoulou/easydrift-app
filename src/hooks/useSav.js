@@ -43,10 +43,26 @@ export function useSav() {
   };
 
   const deleteReport = async (id) => {
+    const report = reports.find(r => r.id === id);
+
+    // Les photos du client vivent dans le bucket, pas dans la table : sans ce
+    // nettoyage elles resteraient orphelines et rempliraient le quota pour rien.
+    const paths = (report?.fichiers ?? [])
+      .map(f => f.url?.split('/storage/v1/object/public/vehicle-files/')[1])
+      .filter(Boolean)
+      .map(p => decodeURIComponent(p));
+
+    if (paths.length) {
+      const { error: storageErr } = await supabase.storage.from('vehicle-files').remove(paths);
+      // Un échec ici ne doit pas empêcher la suppression de la déclaration :
+      // mieux vaut quelques fichiers orphelins qu'une ligne impossible à effacer.
+      if (storageErr) console.warn('Fichiers SAV non supprimés :', storageErr.message);
+    }
+
     const { error } = await supabase.from('sav_reports').delete().eq('id', id);
     if (error) { toast.error('Erreur', error.message); throw error; }
     await fetchData();
-    toast.success('Déclaration supprimée');
+    toast.success('Déclaration supprimée', paths.length ? `${paths.length} fichier${paths.length > 1 ? 's' : ''} effacé${paths.length > 1 ? 's' : ''}` : undefined);
   };
 
   return { reports, loading, createReport, updateReport, deleteReport, refetch: fetchData };
