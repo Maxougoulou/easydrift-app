@@ -345,6 +345,10 @@ export const UI = {
   uploading:    { fr: 'Envoi…', en: 'Uploading…' },
   fileTooBig:   { fr: 'Fichier trop lourd (100 Mo maximum).', en: 'File too large (100 MB maximum).' },
   uploadFailed: { fr: 'Échec de l’envoi du fichier.', en: 'File upload failed.' },
+  fileTypeRefuse: {
+    fr: 'Ce format de fichier n’est pas accepté. Envoyez une photo (JPEG, PNG, HEIC) ou une vidéo (MP4, MOV).',
+    en: 'This file format is not accepted. Please send a photo (JPEG, PNG, HEIC) or a video (MP4, MOV).',
+  },
   maxFiles:     { fr: 'Nombre maximum de fichiers atteint.', en: 'Maximum number of files reached.' },
   yes:          { fr: 'Oui', en: 'Yes' },
   no:           { fr: 'Non', en: 'No' },

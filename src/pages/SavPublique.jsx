@@ -477,7 +477,11 @@ function FilesInput({ field, files, onChange, invalid, locale, token }) {
       const path = `sav/${token}/${field.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safe}`;
       const { error } = await supabase.storage.from('vehicle-files').upload(path, file);
       if (error) {
-        setErr(t(UI.uploadFailed, locale));
+        // Le serveur n'accepte que les formats photo/vidéo. Sans ce cas
+        // particulier, le client lisait « échec de l'envoi » sans savoir que
+        // c'est son format qui pose problème, et réessayait indéfiniment.
+        const formatRefuse = /mime type|not supported|415/i.test(error.message ?? '');
+        setErr(t(formatRefuse ? UI.fileTypeRefuse : UI.uploadFailed, locale));
       } else {
         const { data: pub } = supabase.storage.from('vehicle-files').getPublicUrl(path);
         onChange(prev => [...(prev ?? []), {

@@ -27,11 +27,17 @@ DROP POLICY IF EXISTS "public_read_vehicle_files" ON storage.objects;
 -- du HTML servi ensuite depuis le domaine du projet.
 -- 50 Mo = limite globale par défaut d'un projet Supabase ; inutile d'annoncer
 -- plus au client, le serveur refuserait de toute façon.
+-- La liste couvre ce que produisent réellement les téléphones (iPhone : HEIC +
+-- MOV, Android : JPEG + MP4), plus quelques variantes non standard renvoyées
+-- par certains navigateurs. Ce qui compte est surtout ce qui est EXCLU :
+-- text/html, image/svg+xml et application/javascript, qui seraient servis
+-- comme du code exécutable depuis le domaine du projet.
 UPDATE storage.buckets
 SET file_size_limit   = 52428800,  -- 50 Mo
     allowed_mime_types = ARRAY[
-      'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
-      'video/mp4', 'video/quicktime',
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'image/heic', 'image/heif', 'image/gif', 'image/bmp', 'image/tiff',
+      'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/x-matroska',
       'application/pdf'
     ]
 WHERE id = 'vehicle-files';

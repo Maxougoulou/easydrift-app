@@ -186,7 +186,12 @@ export function FichePublique({ token }) {
     const path = `taches/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safeName}`;
     const { error: upErr } = await supabase.storage.from('vehicle-files').upload(path, file);
     if (upErr) {
-      say('error', 'Envoi de la photo impossible. Vérifie ta connexion et réessaie.');
+      // Le serveur n'accepte que les formats photo/vidéo : on le dit, sinon le
+      // mécano croit à un problème de réseau et réessaie sans fin.
+      const formatRefuse = /mime type|not supported|415/i.test(upErr.message ?? '');
+      say('error', formatRefuse
+        ? 'Format non accepté. Prends une photo avec l’appareil du téléphone (JPEG ou HEIC).'
+        : 'Envoi de la photo impossible. Vérifie ta connexion et réessaie.');
       return false;
     }
     const { data: pub } = supabase.storage.from('vehicle-files').getPublicUrl(path);
