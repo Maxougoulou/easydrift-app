@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { THEME } from '../lib/theme';
 
@@ -8,22 +8,27 @@ import { THEME } from '../lib/theme';
 
 export function VehiculePublique({ token }) {
   const [data, setData] = useState(null);
-  const [state, setState] = useState('loading'); // loading | redirect | idle | notfound
+  const [state, setState] = useState('loading'); // loading | redirect | idle | notfound | offline
 
-  useEffect(() => {
-    (async () => {
-      const { data: result, error } = await supabase.rpc('vehicule_public_get', { p_token: token });
-      if (error || !result) { setState('notfound'); return; }
-      setData(result);
-      if (result.fiche_token) {
-        setState('redirect');
-        // Fiche en cours → on envoie le mécano directement sur sa checklist
-        window.location.replace(`/fiche/${result.fiche_token}`);
-      } else {
-        setState('idle');
-      }
-    })();
+  // On distingue « puce inconnue » de « pas de réseau ». Confondre les deux
+  // faisait accuser le matériel : le mécano lisait « cette puce ne correspond
+  // à aucun véhicule » dans un hangar mal couvert, et décollait la puce.
+  const charger = useCallback(async () => {
+    setState('loading');
+    const { data: result, error } = await supabase.rpc('vehicule_public_get', { p_token: token });
+    if (error) { setState('offline'); return; }
+    if (!result) { setState('notfound'); return; }
+    setData(result);
+    if (result.fiche_token) {
+      setState('redirect');
+      // Fiche en cours → on envoie le mécano directement sur sa checklist
+      window.location.replace(`/fiche/${result.fiche_token}`);
+    } else {
+      setState('idle');
+    }
   }, [token]);
+
+  useEffect(() => { charger(); }, [charger]);
 
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: THEME.bg.app, fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
@@ -42,6 +47,31 @@ export function VehiculePublique({ token }) {
             <div style={{ fontSize: 34, marginBottom: 14 }}>🔧</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Fiche d'intervention en cours</div>
             <div style={{ fontSize: 13, marginTop: 6 }}>Redirection vers la checklist…</div>
+            {/* Issue de secours : si la redirection traîne ou échoue, le mécano
+                n'est pas bloqué devant un texte mort. */}
+            {data?.fiche_token && (
+              <a href={`/fiche/${data.fiche_token}`} style={{ display: 'inline-block', marginTop: 18, fontSize: 13, color: THEME.accent.orange, fontWeight: 700 }}>
+                Ouvrir la fiche →
+              </a>
+            )}
+          </div>
+        )}
+
+        {state === 'offline' && (
+          <div style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ fontSize: 44, marginBottom: 14 }}>📡</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Connexion impossible</div>
+            <div style={{ fontSize: 13, color: THEME.text.muted, marginTop: 8, lineHeight: 1.5 }}>
+              La puce est bonne, c'est le réseau qui ne répond pas.<br />Rapproche-toi d'une zone couverte et réessaie.
+            </div>
+            <button
+              onClick={charger}
+              style={{
+                marginTop: 22, padding: '13px 26px', borderRadius: 12, border: 'none',
+                background: THEME.accent.orange, color: '#fff', fontSize: 15, fontWeight: 800,
+                fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em', cursor: 'pointer',
+              }}
+            >Réessayer</button>
           </div>
         )}
 

@@ -22,11 +22,42 @@
 
 ## ÉTAPE 2 — Créer les tables (schéma SQL)
 
-1. Dans Supabase, menu de gauche → **SQL Editor**
-2. Cliquer **New query**
-3. Coller tout le contenu du fichier `supabase-schema.sql` (dans ce dossier)
-4. Cliquer **Run** (ou Ctrl+Enter)
-5. Vérifier qu'il n'y a pas d'erreurs rouges
+> ⚠️ **L'ORDRE EST OBLIGATOIRE.** Les fichiers se complètent les uns les autres :
+> plusieurs redéfinissent la même fonction en y ajoutant des champs. Les appliquer
+> dans le désordre, ou n'en appliquer qu'une partie, produit une base où les
+> puces NFC et les liens mécano répondent « introuvable ».
+
+Dans Supabase → **SQL Editor** → **New query**, coller et exécuter **chaque
+fichier, un par un, dans cet ordre exact** :
+
+| # | Fichier | Ce qu'il apporte |
+|---|---|---|
+| 1 | `supabase-schema.sql` | Tables de base : équipe, projets, véhicules, budget, notifications |
+| 2 | `supabase-fiches.sql` | Fiches d'intervention + espace mécano public + bucket de fichiers |
+| 3 | `supabase-fiches-v2.sql` | Photos de tâches, pièces véhicule |
+| 4 | `supabase-pieces-v3.sql` | Pièces dans la fiche mécano |
+| 5 | `supabase-pieces-v4.sql` | Pièces fournies par fiche |
+| 6 | `supabase-pieces-v5.sql` | Consommation bornée à ce qui a été fourni |
+| 7 | `supabase-nfc-v6.sql` | Jeton permanent par véhicule (gravé sur la puce NFC) |
+| 8 | `supabase-km-v7.sql` | Historique du kilométrage |
+| 9 | `supabase-fiche-km-v8.sql` | Kilométrage obligatoire à la clôture |
+| 10 | `supabase-consigne-v9.sql` | Consigne admin par tâche |
+| 11 | `supabase-sav-v10.sql` | SAV « anneaux défectueux » + questionnaire client |
+| 12 | `supabase-securite-v11.sql` | **Correctifs de sécurité — à ne pas sauter** |
+| — | `supabase-realtime-fix.sql` | Temps réel (peut être rejoué sans risque) |
+
+**Ne jamais rejouer un fichier déjà appliqué.** Les fichiers 3 à 10 redéfinissent
+`fiche_publique_get` : recoller un ancien fichier **dégrade la fonction sans
+afficher la moindre erreur**, et les pièces et consignes disparaissent de
+l'écran mécano.
+
+### Deux réglages à faire à la main dans le dashboard
+
+1. **Authentication → Sign In / Providers → Email** : désactiver
+   « Allow new users to sign up ». Sans ça, n'importe qui crée un compte et
+   obtient un accès total à la base (toutes les policies sont `USING (true)`).
+2. **Authentication → Users** : créer les comptes de l'équipe à la main
+   (voir ÉTAPE 3).
 
 ---
 
