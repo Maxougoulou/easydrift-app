@@ -574,10 +574,18 @@ function FilesInput({ field, files, onChange, invalid, locale, token }) {
 
 // ── Coquille de page ─────────────────────────────────────────────────────────
 
+// index.html pose `body { overflow: hidden }` : le viewport ne defile pas.
+// Chaque page publique doit donc porter son propre conteneur de defilement,
+// comme le font deja FichePublique et VehiculePublique. Sans cela le
+// formulaire est fige sur son premier ecran, inutilisable au doigt.
+const SCROLL_ID = 'sav-scroll';
+const scrollTop = () => document.getElementById(SCROLL_ID)?.scrollTo({ top: 0, behavior: 'smooth' });
+
 function Shell({ children, locale, setLocale, progress }) {
   return (
-    <div style={{
-      minHeight: '100vh', background: THEME.bg.app,
+    <div id={SCROLL_ID} style={{
+      height: '100vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+      background: THEME.bg.app,
       fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
       color: THEME.text.primary,
     }}>
@@ -774,7 +782,7 @@ export function SavPublique({ token }) {
 
     try { localStorage.removeItem(draftKey(token)); } catch { /* ignore */ }
     setState('done');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollTop();
   };
 
   // ── États hors formulaire ──
@@ -841,7 +849,7 @@ export function SavPublique({ token }) {
 
           <button
             type="button"
-            onClick={() => { setState('form'); window.scrollTo({ top: 0 }); }}
+            onClick={() => { setState('form'); scrollTop(); }}
             style={{
               width: '100%', padding: '17px', borderRadius: 13, border: 'none', cursor: 'pointer',
               background: THEME.accent.orange, color: '#fff',
