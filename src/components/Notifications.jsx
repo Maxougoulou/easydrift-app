@@ -34,7 +34,7 @@ export function NotificationBell({ notifications, unreadCount, onMarkAllRead, on
           <span style={{
             position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8,
             background: THEME.accent.orange, border: `2px solid ${THEME.bg.app}`,
-            fontSize: 9, fontWeight: 800, color: '#fff',
+            fontSize: 9, fontWeight: 800, color: THEME.inkOnBright,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: 'Rajdhani, sans-serif', padding: '0 3px',
           }}>{unreadCount}</span>
@@ -44,7 +44,10 @@ export function NotificationBell({ notifications, unreadCount, onMarkAllRead, on
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: 360, background: THEME.bg.card, border: `1px solid ${THEME.border}`,
+          // Était en largeur fixe : sur un écran de 390 px le panneau
+          // dépassait du viewport et son bord gauche était inaccessible.
+          width: 360, maxWidth: 'calc(100vw - 24px)',
+          background: THEME.bg.card, border: `1px solid ${THEME.border}`,
           borderRadius: 12, boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
           zIndex: 1000, overflow: 'hidden',
         }}>
@@ -137,15 +140,19 @@ function ToastItem({ toast }) {
     <div style={{
       pointerEvents: 'all',
       background: THEME.bg.card,
-      border: `1px solid ${colors[toast.type] ?? THEME.border}44`,
-      borderLeft: `3px solid ${colors[toast.type] ?? THEME.accent.orange}`,
+      // Bordure pleine teintée plutôt qu'un liseré latéral : la couleur dit
+      // déjà la sévérité tout autour, et l'icône la redit. Le liseré épais
+      // d'un seul côté n'ajoutait rien.
+      border: `1px solid ${colors[toast.type] ?? THEME.accent.orange}66`,
       borderRadius: 10, padding: '12px 16px',
-      minWidth: 300, maxWidth: 380,
+      minWidth: 260, maxWidth: 'min(380px, calc(100vw - 32px))',
       display: 'flex', gap: 10, alignItems: 'flex-start',
       boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
       transform: visible ? 'translateX(0)' : 'translateX(120%)',
       opacity: visible ? 1 : 0,
-      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      // Décélération exponentielle, sans rebond : un toast qui dépasse puis
+      // revient attire l'œil plus longtemps que nécessaire.
+      transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out',
     }}>
       <span style={{ fontSize: 18, flexShrink: 0 }}>{icons[toast.type] ?? 'ℹ️'}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -220,7 +227,7 @@ export function MentionInput({ onSend, placeholder, team, currentMemberId }) {
           placeholder={placeholder ?? 'Écrire un message… utilisez @ pour mentionner'}
           style={{ flex: 1, background: THEME.bg.input, border: `1px solid ${THEME.border}`, borderRadius: 8, padding: '10px 14px', color: THEME.text.primary, fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
         />
-        <button onClick={handleSend} style={{ background: THEME.accent.orange, border: 'none', borderRadius: 8, padding: '10px 16px', color: '#fff', cursor: 'pointer', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 13 }}>
+        <button onClick={handleSend} style={{ background: THEME.accent.orange, border: 'none', borderRadius: 8, padding: '10px 16px', color: THEME.inkOnBright, cursor: 'pointer', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 13 }}>
           Envoyer
         </button>
       </div>

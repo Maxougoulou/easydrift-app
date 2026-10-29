@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component {
             onClick={() => window.location.reload()}
             style={{
               padding: '14px 30px', borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: THEME.accent.orange, color: '#fff', fontSize: 15, fontWeight: 800,
+              background: THEME.accent.orange, color: THEME.inkOnBright, fontSize: 15, fontWeight: 800,
               fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em',
             }}
           >Recharger la page</button>

@@ -47,12 +47,16 @@ export function PriorityBadge({ priority }) {
 }
 
 export function ProgressBar({ value, color = '#F07814', height = 4 }) {
+  const pct = Math.min(Math.max(value, 0), 100);
   return (
-    <div style={{ width: '100%', height, background: 'rgba(255,255,255,0.08)', borderRadius: height }}>
+    <div style={{ width: '100%', height, background: 'rgba(255,255,255,0.08)', borderRadius: height, overflow: 'hidden' }}>
+      {/* Animé en transform plutôt qu'en width : la largeur déclenche un
+          recalcul de mise en page à chaque image, le transform non. */}
       <div style={{
-        width: `${Math.min(value, 100)}%`, height: '100%', borderRadius: height,
-        background: value >= 100 ? '#22C55E' : `linear-gradient(90deg, ${color}, ${color}CC)`,
-        transition: 'width 0.5s ease',
+        width: '100%', height: '100%', borderRadius: height,
+        transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
+        background: pct >= 100 ? '#22C55E' : `linear-gradient(90deg, ${color}, ${color}CC)`,
+        transition: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)',
       }} />
     </div>
   );
@@ -91,10 +95,10 @@ export function Btn({ children, variant = 'primary', size = 'md', onClick, style
     opacity: disabled ? 0.5 : 1,
   };
   const variants = {
-    primary:   { background: hov && !disabled ? '#FF9A3C' : THEME.accent.orange, color: '#fff' },
+    primary:   { background: hov && !disabled ? '#FF9A3C' : THEME.accent.orange, color: THEME.inkOnBright },
     secondary: { background: hov && !disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)', color: THEME.text.primary, border: `1px solid ${THEME.border}` },
     ghost:     { background: 'transparent', color: THEME.text.secondary },
-    danger:    { background: hov && !disabled ? '#dc2626' : THEME.accent.red, color: '#fff' },
+    danger:    { background: hov && !disabled ? '#B91C1C' : THEME.accent.redSolid, color: '#fff' },
   };
   return (
     <button

@@ -256,7 +256,7 @@ function KanbanCard({ project, team, onClick, onDragStart, onDragEnd, isDragging
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 700, textAlign: 'center', padding: '0 12px' }}>Supprimer « {project.name} » ?</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', textAlign: 'center', padding: '0 16px', lineHeight: 1.4 }}>Toutes les tâches et commentaires seront supprimés.</span>
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(project.id); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Supprimer</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(project.id); }} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Supprimer</button>
             <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }} style={{ background: 'rgba(255,255,255,0.1)', border: `1px solid rgba(255,255,255,0.15)`, borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
           </div>
         </div>
@@ -347,7 +347,7 @@ function ListRow({ project, team, onClick, onDelete, isSelected }) {
       {confirmDelete ? (
         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 4, gridColumn: '1 / -1', paddingTop: 8, borderTop: `1px solid ${THEME.accent.red}33`, marginTop: 4, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700, flex: 1 }}>Supprimer « {project.name} » ?</span>
-          <button onClick={() => onDelete(project.id)} style={{ background: THEME.accent.red, border: 'none', borderRadius: 6, padding: '4px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={() => onDelete(project.id)} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 6, padding: '4px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
           <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: 6, padding: '4px 12px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
         </div>
       ) : (
@@ -533,9 +533,11 @@ function ProjectDetail({ project, onBack, team, currentMember, updateTaskStatus,
           <ProgressBar value={project.progress} height={5} />
         </div>
 
-        {/* Description */}
+        {/* Description. Le liseré orange sur le flanc gauche a été retiré :
+            il était purement décoratif et n'encodait aucune information,
+            contrairement à ceux des cartes de projet. */}
         {project.description && (
-          <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', borderLeft: `3px solid rgba(240,120,20,0.35)` }}>
+          <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 10, background: 'rgba(240,120,20,0.05)', border: `1px solid rgba(240,120,20,0.14)` }}>
             <p style={{ margin: 0, fontSize: 13, color: THEME.text.secondary, lineHeight: 1.75 }}>{project.description}</p>
           </div>
         )}
@@ -638,7 +640,7 @@ function AttachmentRow({ att, onDelete }) {
       <a href={att.url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: THEME.accent.orange, fontWeight: 600, textDecoration: 'none', flexShrink: 0, padding: '4px 8px', borderRadius: 5, background: THEME.accent.orangeDim }}>Ouvrir</a>
       {confirmDelete ? (
         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={onDelete} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
           <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 9px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
         </div>
       ) : (
@@ -669,14 +671,14 @@ function TaskRow({ task, team, onToggle, onDelete }) {
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => { setHov(false); setConfirmDelete(false); }}
       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 8, background: THEME.bg.card, border: `1px solid ${confirmDelete ? THEME.accent.red + '55' : THEME.border}`, opacity: done ? 0.6 : 1, transition: 'all 0.2s' }}
     >
-      <button onClick={toggle} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: done ? THEME.accent.green : 'transparent', border: `2px solid ${done ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}>{done ? '✓' : ''}</button>
+      <button onClick={toggle} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, background: done ? THEME.accent.green : 'transparent', border: `2px solid ${done ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: THEME.inkOnBright, transition: 'all 0.15s' }}>{done ? '✓' : ''}</button>
       <span style={{ flex: 1, fontSize: 13, color: THEME.text.primary, textDecoration: done ? 'line-through' : 'none' }}>{task.title}</span>
       <PriorityBadge priority={task.priority} />
       {assigneeMember && <Avatar member={assigneeMember} size={24} />}
       {confirmDelete ? (
         <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Supprimer ?</span>
-          <button onClick={() => onDelete(task.id)} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={() => onDelete(task.id)} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 9px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
           <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 9px', color: THEME.text.secondary, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
         </div>
       ) : (

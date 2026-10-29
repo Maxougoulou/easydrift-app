@@ -162,12 +162,13 @@ export function Sidebar({ activeSection, onNavigate, collapsed, team, currentMem
 
       {showAccount && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)', padding: 16 }}
           onClick={() => setShowAccount(false)}
         >
           <div onClick={e => e.stopPropagation()} style={{
             background: THEME.bg.card, border: `1px solid ${THEME.border}`,
-            borderRadius: 16, padding: '28px 32px', width: 360,
+            borderRadius: 16, padding: '28px 32px',
+            width: '100%', maxWidth: 360, boxSizing: 'border-box',
             boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${THEME.border}` }}>

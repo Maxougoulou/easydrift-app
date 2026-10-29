@@ -261,7 +261,7 @@ export function FichePublique({ token }) {
             onClick={() => { setLoading(true); load(); }}
             style={{
               marginTop: 22, padding: '13px 26px', borderRadius: 12, border: 'none',
-              background: THEME.accent.orange, color: '#fff', fontSize: 15, fontWeight: 800,
+              background: THEME.accent.orange, color: THEME.inkOnBright, fontSize: 15, fontWeight: 800,
               fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em', cursor: 'pointer',
             }}
           >Réessayer</button>
@@ -438,7 +438,14 @@ export function FichePublique({ token }) {
       {/* Progression */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.07)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ width: `${tachesDemandees.length ? (faites / tachesDemandees.length) * 100 : 0}%`, height: '100%', background: THEME.accent.orange, borderRadius: 4, transition: 'width 0.3s' }} />
+          {/* scaleX plutôt que width : la largeur force un recalcul de mise
+              en page à chaque image de l'animation, le transform non. */}
+          <div style={{
+            width: '100%', height: '100%', background: THEME.accent.orange,
+            transform: `scaleX(${tachesDemandees.length ? faites / tachesDemandees.length : 0})`,
+            transformOrigin: 'left center',
+            transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+          }} />
         </div>
         <span style={{ fontSize: 13, fontWeight: 700, color: THEME.text.secondary, whiteSpace: 'nowrap' }}>{faites}/{tachesDemandees.length}</span>
       </div>
@@ -485,7 +492,7 @@ export function FichePublique({ token }) {
             onClick={() => setShowFinish(true)}
             style={{
               width: '100%', padding: '17px', borderRadius: 14, border: 'none',
-              background: THEME.accent.green, color: '#fff',
+              background: THEME.accent.green, color: THEME.inkOnBright,
               fontSize: 17, fontWeight: 800, cursor: 'pointer',
               fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em',
               boxShadow: '0 4px 20px rgba(34,197,94,0.35)',
@@ -590,7 +597,9 @@ function TacheCard({ tache, readOnly, onToggle, onPhoto, isMecano }) {
           border: `2.5px solid ${tache.fait ? THEME.accent.green : THEME.text.muted}`,
           background: tache.fait ? THEME.accent.green : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: 15, fontWeight: 900, transition: 'all 0.15s',
+          // Encre sombre quand la case est pleine : un ✓ blanc sur le vert
+          // ne ressort qu'à 2,3:1, soit à peine visible en extérieur.
+          color: THEME.inkOnBright, fontSize: 15, fontWeight: 900, transition: 'all 0.15s',
         }}>{tache.fait ? '✓' : ''}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -633,7 +642,7 @@ function TacheCard({ tache, readOnly, onToggle, onPhoto, isMecano }) {
               />
               <button
                 onClick={saveComment} disabled={savingComment}
-                style={{ background: savingComment ? THEME.text.muted : THEME.accent.orange, border: 'none', borderRadius: 8, padding: '8px 14px', color: '#fff', fontSize: 13, fontWeight: 700, cursor: savingComment ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                style={{ background: savingComment ? THEME.text.muted : THEME.accent.orange, border: 'none', borderRadius: 8, padding: '8px 14px', color: THEME.inkOnBright, fontSize: 13, fontWeight: 700, cursor: savingComment ? 'default' : 'pointer', fontFamily: 'inherit' }}
               >{savingComment ? '…' : 'OK'}</button>
             </div>
           ) : (

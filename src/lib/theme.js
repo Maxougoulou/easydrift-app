@@ -9,12 +9,24 @@ export const THEME = {
   },
   border: 'rgba(255,255,255,0.07)',
   borderAccent: 'rgba(240,120,20,0.4)',
+
+  // Rampe de gris recalée sur le contraste WCAG. L'ancien `muted` (#4A4850)
+  // plafonnait à 1,8:1 sur les fonds sombres, très loin des 4,5:1 lisibles —
+  // or c'est la couleur de TOUS les libellés de champs, dates et mentions
+  // secondaires (plus de 350 usages). Invisible sur un téléphone en plein
+  // soleil. Les trois niveaux de hiérarchie sont conservés, tous ≥ 4,7:1.
   text: {
-    primary: '#F0EDE8',
-    secondary: '#8A8790',
-    muted: '#4A4850',
+    primary: '#F0EDE8',    // 14,2 à 16,6:1
+    secondary: '#B4B1BC',  //  7,9 à  9,2:1
+    muted: '#8A8790',      //  4,7 à  5,5:1
     accent: '#F07814',
   },
+
+  // Encre pour le texte posé SUR un aplat vif. Le blanc n'y tient pas :
+  // 2,84:1 sur l'orange, 2,28:1 sur le vert — soit les boutons les plus
+  // importants de l'app avec le texte le moins lisible. Cette encre monte
+  // à 6,9:1 sur l'orange et 8,6:1 sur le vert.
+  inkOnBright: '#140A02',
   accent: {
     orange: '#F07814',
     orangeLight: '#FF9A3C',
@@ -25,7 +37,8 @@ export const THEME = {
     purpleDim: 'rgba(168,85,247,0.15)',
     green: '#22C55E',
     greenDim: 'rgba(34,197,94,0.15)',
-    red: '#EF4444',
+    red: '#EF4444',          // texte et bordures sur fond sombre (5,2:1)
+    redSolid: '#DC2626',     // aplat de bouton : laisse passer le blanc à 4,8:1
     redDim: 'rgba(239,68,68,0.15)',
     yellow: '#F59E0B',
     yellowDim: 'rgba(245,158,11,0.15)',

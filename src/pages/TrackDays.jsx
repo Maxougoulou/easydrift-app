@@ -170,7 +170,7 @@ function TrackDayCard({ td, onClick, onDelete }) {
         <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', inset: 0, borderRadius: 10, background: 'rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 2 }}>
           <span style={{ fontSize: 13, color: '#fff', fontWeight: 700 }}>Supprimer « {td.name} » ?</span>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Supprimer</button>
+            <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Supprimer</button>
             <button onClick={e => { e.stopPropagation(); setConfirmDelete(false); }} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 7, padding: '6px 16px', color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
           </div>
         </div>
@@ -570,13 +570,13 @@ function ParticipantRow({ participant: p, onTogglePaid, onDelete, onEdit, onUpda
         <button
           onClick={onTogglePaid}
           title={p.paid ? 'Marquer non payé' : 'Facture payée'}
-          style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', transition: 'all 0.15s' }}
+          style={{ width: 20, height: 20, borderRadius: 5, background: p.paid ? THEME.accent.green : 'transparent', border: `2px solid ${p.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: THEME.inkOnBright, transition: 'all 0.15s' }}
         >{p.paid ? '✓' : ''}</button>
       </div>
       <PdfCell invoiceUrl={p.invoice_url} onUpload={onUploadInvoice} />
       <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
         {confirmDelete ? (
-          <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 4, padding: '2px 6px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+          <button onClick={onDelete} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 4, padding: '2px 6px', color: '#fff', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
         ) : (
           <>
             {hov && (
@@ -790,7 +790,13 @@ function FinancesSection({ td, parts, profit, revenue, expected, costs, onEdit, 
               </span>
             </div>
             <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${Math.min(100, parts.length / td.max_participants * 100)}%`, background: parts.length >= td.max_participants ? THEME.accent.green : THEME.accent.blue, borderRadius: 3, transition: 'width 0.3s' }} />
+              <div style={{
+                height: '100%', width: '100%',
+                transform: `scaleX(${Math.min(1, parts.length / td.max_participants)})`,
+                transformOrigin: 'left center',
+                background: parts.length >= td.max_participants ? THEME.accent.green : THEME.accent.blue,
+                transition: 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+              }} />
             </div>
           </div>
         )}
@@ -1269,7 +1275,7 @@ function ParticipantForm({ td, participant, clients = [], createClient, onSubmit
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button
                 onClick={() => set('paid', !form.paid)}
-                style={{ width: 22, height: 22, borderRadius: 5, background: form.paid ? THEME.accent.green : 'transparent', border: `2px solid ${form.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', transition: 'all 0.15s' }}
+                style={{ width: 22, height: 22, borderRadius: 5, background: form.paid ? THEME.accent.green : 'transparent', border: `2px solid ${form.paid ? THEME.accent.green : THEME.text.muted}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: THEME.inkOnBright, transition: 'all 0.15s' }}
               >{form.paid ? '✓' : ''}</button>
               <span style={{ fontSize: 13, color: THEME.text.secondary }}>Facture payée</span>
             </div>
@@ -1417,7 +1423,7 @@ function ClientRow({ client: c, isConfirmDelete, onEdit, onDelete, onAskDelete, 
       {isConfirmDelete && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: 11, color: THEME.text.secondary }}>Supprimer ?</span>
-          <button onClick={onDelete} style={{ background: THEME.accent.red, border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+          <button onClick={onDelete} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
           <button onClick={onCancelDelete} style={{ background: 'rgba(255,255,255,0.07)', border: `1px solid ${THEME.border}`, borderRadius: 7, padding: '5px 10px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer' }}>Non</button>
         </div>
       )}

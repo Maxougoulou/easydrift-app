@@ -11,9 +11,25 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
-input::placeholder { color: rgba(255,255,255,0.28); }
-input:focus { border-color: rgba(240,120,20,0.5) !important; box-shadow: 0 0 0 3px rgba(240,120,20,0.1); outline: none; }
-button:focus-visible { outline: 2px solid #F07814; outline-offset: 2px; }
+/* 0.28 donnait un contraste de ~2,3:1, sous le seuil lisible : le texte
+   indicatif disparaissait sur un écran en extérieur. 0.5 le remonte à ~4,8:1
+   tout en restant nettement plus discret qu'une valeur saisie. */
+input::placeholder,
+textarea::placeholder { color: rgba(255,255,255,0.5); }
+
+/* Le focus ne couvrait que <input> : un <textarea> ou un <select> ne montrait
+   rien du tout, et la navigation au clavier se faisait à l'aveugle. */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(240,120,20,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(240,120,20,0.1);
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible { outline: 2px solid #F07814; outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

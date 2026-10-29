@@ -319,7 +319,7 @@ export function SetupConfiguratorModule() {
                   {/* ── Étape 1 : Anneau ── */}
                   <div style={{ background: THEME.bg.card, border: `1px solid ${THEME.border}`, borderRadius: 12, overflow: 'hidden' }}>
                     <div style={{ padding: '14px 20px', borderBottom: `1px solid ${THEME.border}`, background: `${THEME.accent.green}0A`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: THEME.accent.green, color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</span>
+                      <span style={{ width: 24, height: 24, borderRadius: '50%', background: THEME.accent.green, color: THEME.inkOnBright, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</span>
                       <span style={{ fontSize: 14, fontWeight: 800, color: THEME.text.primary, fontFamily: 'Rajdhani, sans-serif' }}>Anneau recommandé</span>
                     </div>
                     <div style={{ padding: '20px' }}>

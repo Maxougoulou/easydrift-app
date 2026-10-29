@@ -321,7 +321,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
                         border: `2px solid ${isOn ? THEME.accent.orange : THEME.text.muted}`,
                         background: isOn ? THEME.accent.orange : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontSize: 12, fontWeight: 900,
+                        color: THEME.inkOnBright, fontSize: 12, fontWeight: 900,
                       }}>{isOn ? '✓' : ''}</span>
                       <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary, flex: 1 }}>{item}</span>
                       {isOn && renderPhotoBtn(item)}
@@ -409,7 +409,7 @@ export function FicheCreateModal({ vehicle, onCreate, onClose, saving }) {
                           border: `2px solid ${isSel ? THEME.accent.orange : THEME.text.muted}`,
                           background: isSel ? THEME.accent.orange : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#fff', fontSize: 12, fontWeight: 900,
+                          color: THEME.inkOnBright, fontSize: 12, fontWeight: 900,
                         }}>{isSel ? '✓' : ''}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 13, color: isSel ? THEME.text.primary : THEME.text.secondary, fontWeight: 600 }}>{p.name}</span>
@@ -589,7 +589,7 @@ export function FicheEditModal({ fiche, vehicle, actions, onClose }) {
                     border: `2px solid ${locked ? THEME.accent.green : isOn ? THEME.accent.orange : THEME.text.muted}`,
                     background: locked ? THEME.accent.green : isOn ? THEME.accent.orange : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 12, fontWeight: 900,
+                    color: THEME.inkOnBright, fontSize: 12, fontWeight: 900,
                   }}>{isOn ? '✓' : ''}</span>
                   <span style={{ fontSize: 13, color: isOn ? THEME.text.primary : THEME.text.secondary, flex: 1 }}>
                     {item}
@@ -617,7 +617,7 @@ export function FicheEditModal({ fiche, vehicle, actions, onClose }) {
                   {!t.fait && (
                     confirmDel === t.id ? (
                       <span style={{ display: 'flex', gap: 4 }}>
-                        <button onClick={() => { deleteTache(t.id); setConfirmDel(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '2px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                        <button onClick={() => { deleteTache(t.id); setConfirmDel(null); }} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '2px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
                         <button onClick={() => setConfirmDel(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '2px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
                       </span>
                     ) : (
@@ -702,7 +702,7 @@ export function FicheEditModal({ fiche, vehicle, actions, onClose }) {
                       border: `2px solid ${isSel ? THEME.accent.orange : THEME.text.muted}`,
                       background: isSel ? THEME.accent.orange : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 12, fontWeight: 900,
+                      color: THEME.inkOnBright, fontSize: 12, fontWeight: 900,
                     }}>{isSel ? '✓' : ''}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 13, color: isSel ? THEME.text.primary : THEME.text.secondary, fontWeight: 600 }}>{p.name}</span>
@@ -802,7 +802,7 @@ export function FicheClotureModal({ fiche, vehicle, onCloture, onClose, saving }
             border: `2px solid ${updateRevision ? THEME.accent.orange : THEME.text.muted}`,
             background: updateRevision ? THEME.accent.orange : 'transparent',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 12, fontWeight: 900,
+            color: THEME.inkOnBright, fontSize: 12, fontWeight: 900,
           }}>{updateRevision ? '✓' : ''}</span>
           <span style={{ fontSize: 12, color: THEME.text.secondary, textAlign: 'left' }}>
             Mettre à jour la date de dernière révision et le kilométrage du véhicule

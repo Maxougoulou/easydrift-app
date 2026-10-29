@@ -429,7 +429,7 @@ function VideoLink({ field, locale }) {
     >
       <span style={{
         width: 38, height: 38, borderRadius: 9, flexShrink: 0,
-        background: THEME.accent.red, color: '#fff',
+        background: THEME.accent.redSolid, color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
       }}>▶</span>
       <span style={{ flex: 1, minWidth: 0 }}>
@@ -629,9 +629,10 @@ function Shell({ children, locale, setLocale, progress }) {
         {progress !== undefined && (
           <div style={{ height: 3, background: 'rgba(255,255,255,0.06)' }}>
             <div style={{
-              height: '100%', width: `${progress}%`,
+              height: '100%', width: '100%',
+              transform: `scaleX(${progress / 100})`, transformOrigin: 'left center',
               background: `linear-gradient(90deg, ${THEME.accent.orange}, ${THEME.accent.orangeLight})`,
-              transition: 'width 0.35s ease',
+              transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
             }} />
           </div>
         )}
@@ -856,7 +857,7 @@ export function SavPublique({ token }) {
             onClick={() => { setState('form'); scrollTop(); }}
             style={{
               width: '100%', padding: '17px', borderRadius: 13, border: 'none', cursor: 'pointer',
-              background: THEME.accent.orange, color: '#fff',
+              background: THEME.accent.orange, color: THEME.inkOnBright,
               fontSize: 16, fontWeight: 800, fontFamily: 'Rajdhani, sans-serif',
               letterSpacing: '0.05em', boxShadow: '0 8px 22px rgba(240,120,20,0.26)',
             }}
@@ -1015,7 +1016,7 @@ export function SavPublique({ token }) {
             flex: 1, padding: '16px', borderRadius: 13, border: 'none',
             cursor: sending ? 'default' : 'pointer',
             background: sending ? THEME.text.muted : isLast ? THEME.accent.green : THEME.accent.orange,
-            color: '#fff', fontSize: 16, fontWeight: 800,
+            color: THEME.inkOnBright, fontSize: 16, fontWeight: 800,
             fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.05em',
             boxShadow: sending ? 'none' : `0 8px 22px ${isLast ? 'rgba(34,197,94,0.26)' : 'rgba(240,120,20,0.26)'}`,
             transition: 'background 0.2s',

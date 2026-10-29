@@ -589,7 +589,7 @@ function VehicleDetail({ vehicle, onBack }) {
         {confirmDeleteVehicle ? (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Supprimer définitivement ?</span>
-            <button onClick={handleDeleteVehicle} style={{ background: THEME.accent.red, border: 'none', borderRadius: 6, padding: '4px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui, supprimer</button>
+            <button onClick={handleDeleteVehicle} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 6, padding: '4px 12px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui, supprimer</button>
             <button onClick={() => setConfirmDeleteVehicle(false)} style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: 6, padding: '4px 12px', color: THEME.text.secondary, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Annuler</button>
           </div>
         ) : (
@@ -863,7 +863,7 @@ function FicheJournalRow({ fiche, vehicle, isLast, standalone, onCloturer, onDel
             )}
             {confirmDelete ? (
               <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                <button onClick={() => onDelete(fiche.id)} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                <button onClick={() => onDelete(fiche.id)} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
                 <button onClick={() => setConfirmDelete(false)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
               </div>
             ) : (
@@ -1021,7 +1021,7 @@ function PartsTab({ vehicle }) {
             {confirmDelete === p.id ? (
               <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: THEME.accent.red, fontWeight: 700 }}>Retirer ?</span>
-                <button onClick={() => { deletePart(p.id); setConfirmDelete(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                <button onClick={() => { deletePart(p.id); setConfirmDelete(null); }} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
                 <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
               </div>
             ) : (
@@ -1077,7 +1077,7 @@ function DocumentsTab({ vehicleId }) {
             )}
             {confirmDelete === doc.id ? (
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <button onClick={() => { deleteDoc(doc.id); setConfirmDelete(null); }} style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
+                <button onClick={() => { deleteDoc(doc.id); setConfirmDelete(null); }} style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Oui</button>
                 <button onClick={() => setConfirmDelete(null)} style={{ background: 'rgba(255,255,255,0.08)', border: `1px solid ${THEME.border}`, borderRadius: 5, padding: '3px 8px', color: THEME.text.secondary, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
               </div>
             ) : (
@@ -1125,7 +1125,7 @@ function MaintenanceRow({ entry, team, isLast, onDelete }) {
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button
                   onClick={() => onDelete(entry.id)}
-                  style={{ background: THEME.accent.red, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ background: THEME.accent.redSolid, border: 'none', borderRadius: 5, padding: '3px 8px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                 >Oui</button>
                 <button
                   onClick={() => setConfirmDelete(false)}

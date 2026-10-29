@@ -95,7 +95,7 @@ export function FormActions({ onCancel, submitLabel = 'Enregistrer', loading }) 
       <button type="button" onClick={onCancel} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${THEME.border}`, borderRadius: 8, padding: '8px 18px', color: THEME.text.secondary, cursor: 'pointer', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 13 }}>
         Annuler
       </button>
-      <button type="submit" disabled={loading} style={{ background: loading ? 'rgba(240,120,20,0.5)' : THEME.accent.orange, border: 'none', borderRadius: 8, padding: '8px 22px', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.04em' }}>
+      <button type="submit" disabled={loading} style={{ background: loading ? 'rgba(240,120,20,0.5)' : THEME.accent.orange, border: 'none', borderRadius: 8, padding: '8px 22px', color: THEME.inkOnBright, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '0.04em' }}>
         {loading ? 'Enregistrement…' : submitLabel}
       </button>
     </div>

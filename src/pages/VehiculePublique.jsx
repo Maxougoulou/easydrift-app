@@ -68,7 +68,7 @@ export function VehiculePublique({ token }) {
               onClick={charger}
               style={{
                 marginTop: 22, padding: '13px 26px', borderRadius: 12, border: 'none',
-                background: THEME.accent.orange, color: '#fff', fontSize: 15, fontWeight: 800,
+                background: THEME.accent.orange, color: THEME.inkOnBright, fontSize: 15, fontWeight: 800,
                 fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.04em', cursor: 'pointer',
               }}
             >Réessayer</button>
