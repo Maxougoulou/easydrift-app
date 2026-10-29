@@ -1,0 +1,100 @@
+# Garde le projet Supabase éveillé.
+#
+# L'offre gratuite met le projet en pause après ~7 jours sans activité. Quand
+# ça arrive, le site Vercel continue de répondre normalement mais l'app semble
+# vide : les scans NFC n'affichent plus rien, les listes sont vides. Ce
+# workflow fait une vraie requête en base tous les 2 jours, ce qui suffit à
+# réinitialiser le compteur d'inactivité.
+#
+# Il sert aussi de surveillance : si la requête échoue, GitHub envoie un e-mail.
+# C'est aujourd'hui le seul signal automatique en cas de panne de la base.
+#
+# ⚠️ GitHub désactive les workflows planifiés après 60 jours SANS AUCUN commit
+#    sur le dépôt. En cas de longue pause dans le développement, repasser par
+#    l'onglet Actions pour le réactiver (ou lancer un run manuel, ce qui remet
+#    le compteur à zéro).
+
+name: Garder Supabase éveillé
+
+on:
+  schedule:
+    # Tous les 2 jours à 6h12 UTC. L'heure est volontairement décalée : les
+    # crons à heure ronde sont massivement utilisés et GitHub les retarde.
+    - cron: '12 6 */2 * *'
+  workflow_dispatch:      # permet un lancement manuel depuis l'onglet Actions
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      SUPABASE_URL: https://yyuxcwhwglvdlirlacnd.supabase.co
+      SITE_URL: https://easydrift-app.vercel.app
+
+    steps:
+      - name: Récupérer la clé publique
+        id: cle
+        run: |
+          set -euo pipefail
+          CLE="${{ secrets.SUPABASE_ANON_KEY }}"
+
+          # Repli : la clé anon est publique par conception (elle est livrée
+          # dans le bundle JS du site). On la relit depuis le site déployé si
+          # aucun secret n'est configuré, pour que le workflow marche sans
+          # aucune mise en place préalable.
+          if [ -z "$CLE" ]; then
+            echo "Pas de secret SUPABASE_ANON_KEY : lecture depuis le bundle déployé."
+            BUNDLE=$(curl -sS --max-time 30 "$SITE_URL/" \
+              | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+            if [ -z "$BUNDLE" ]; then
+              echo "::error::Impossible de localiser le bundle sur $SITE_URL"
+              exit 1
+            fi
+            CLE=$(curl -sS --max-time 60 "$SITE_URL$BUNDLE" \
+              | grep -oE 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' \
+              | head -1)
+          fi
+
+          if [ -z "$CLE" ]; then
+            echo "::error::Clé Supabase introuvable (ni secret, ni bundle)."
+            exit 1
+          fi
+
+          echo "::add-mask::$CLE"
+          echo "cle=$CLE" >> "$GITHUB_OUTPUT"
+
+      - name: Interroger la base
+        run: |
+          set -euo pipefail
+          CLE='${{ steps.cle.outputs.cle }}'
+
+          # Une vraie requête SQL, pas un simple appel HTTP : c'est la base
+          # qu'il faut réveiller, pas la passerelle. RLS renvoie [] à un
+          # visiteur anonyme, ce qui est le résultat attendu.
+          CODE=$(curl -sS --max-time 45 -o reponse.txt -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/sav_reports?select=id&limit=1" \
+            -H "apikey: $CLE" -H "Authorization: Bearer $CLE")
+
+          echo "HTTP $CODE — réponse : $(head -c 200 reponse.txt)"
+
+          if [ "$CODE" != "200" ]; then
+            echo "::error::La base n'a pas répondu correctement (HTTP $CODE). Le projet est peut-être en pause : https://supabase.com/dashboard"
+            exit 1
+          fi
+
+          echo "Base éveillée ✓"
+
+      - name: Vérifier que le site répond
+        run: |
+          set -euo pipefail
+          CODE=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$SITE_URL/")
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Le site ne répond pas (HTTP $CODE)."
+            exit 1
+          fi
+          echo "Site en ligne ✓"
